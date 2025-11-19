@@ -1,11 +1,11 @@
-
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/mockApi';
 import { Equipo, HistorialMovimiento, TipoEquipo, HistorialAsignacion, Usuario, RegistroMantenimiento, Licencia } from '../types';
-import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop, Key } from 'lucide-react';
+import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop, Key, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type ReportTab = 'REPLACEMENT' | 'HISTORY' | 'ASSIGNMENTS' | 'MAINTENANCE' | 'LICENSES';
 type GroupingMode = 'NONE' | 'USER' | 'EQUIPMENT';
+type LicenseGroupingMode = 'NONE' | 'TYPE';
 
 const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReportTab>('REPLACEMENT');
@@ -29,6 +29,16 @@ const Reports: React.FC = () => {
   const [assignFilterUser, setAssignFilterUser] = useState<string>('');
   const [assignFilterEquipo, setAssignFilterEquipo] = useState<string>('');
   const [assignGrouping, setAssignGrouping] = useState<GroupingMode>('NONE');
+  const [currentAssignPage, setCurrentAssignPage] = useState(1);
+  const ASSIGN_ITEMS_PER_PAGE = 10;
+
+  // License Report Specific States
+  const [licenseFilterUser, setLicenseFilterUser] = useState<string>('');
+  const [licenseGrouping, setLicenseGrouping] = useState<LicenseGroupingMode>('NONE');
+  
+  // License Pagination
+  const [currentLicensePage, setCurrentLicensePage] = useState(1);
+  const LICENSE_ITEMS_PER_PAGE = 10;
 
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +71,15 @@ const Reports: React.FC = () => {
       fetchLicencias();
     }
   }, [activeTab, selectedTipoId]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentLicensePage(1);
+  }, [licenseFilterUser, licenseGrouping, activeTab]);
+
+  useEffect(() => {
+    setCurrentAssignPage(1);
+  }, [assignFilterUser, assignFilterEquipo, assignGrouping, activeTab]);
 
   const fetchHistorial = async () => {
     setLoading(true);
@@ -104,7 +123,7 @@ const Reports: React.FC = () => {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
-  // --- Logic for Assignments Filtering & Grouping ---
+  // --- Logic for Assignments Filtering & Grouping & Pagination ---
   
   const getFilteredAssignments = () => {
     return asignaciones.filter(item => {
@@ -114,11 +133,17 @@ const Reports: React.FC = () => {
     });
   };
 
-  const getGroupedAssignments = () => {
-    const filtered = getFilteredAssignments();
-    if (assignGrouping === 'NONE') return { 'Todas las Asignaciones': filtered };
+  const filteredAssignmentsList = getFilteredAssignments();
+  const totalAssignPages = Math.ceil(filteredAssignmentsList.length / ASSIGN_ITEMS_PER_PAGE);
+  const paginatedAssignments = filteredAssignmentsList.slice(
+    (currentAssignPage - 1) * ASSIGN_ITEMS_PER_PAGE,
+    currentAssignPage * ASSIGN_ITEMS_PER_PAGE
+  );
 
-    return filtered.reduce((groups, item) => {
+  const getGroupedAssignments = (items: HistorialAsignacion[]) => {
+    if (assignGrouping === 'NONE') return { 'Todas las Asignaciones': items };
+
+    return items.reduce((groups, item) => {
       const key = assignGrouping === 'USER' ? item.usuario_nombre : `${item.equipo_codigo} - ${item.equipo_modelo}`;
       if (!groups[key]) {
         groups[key] = [];
@@ -128,7 +153,41 @@ const Reports: React.FC = () => {
     }, {} as Record<string, HistorialAsignacion[]>);
   };
 
-  const groupedData = getGroupedAssignments();
+  const groupedData = getGroupedAssignments(paginatedAssignments);
+
+  // --- Logic for Licenses Filtering & Grouping ---
+
+  const getFilteredLicenses = () => {
+    return licencias.filter(l => {
+      // Only show assigned licenses in this report
+      const isAssigned = l.usuario_id !== null && l.usuario_id !== undefined;
+      const matchesUser = licenseFilterUser ? l.usuario_nombre === licenseFilterUser : true;
+      return isAssigned && matchesUser;
+    });
+  };
+
+  const filteredLicensesList = getFilteredLicenses();
+  const totalLicensePages = Math.ceil(filteredLicensesList.length / LICENSE_ITEMS_PER_PAGE);
+  const paginatedLicenses = filteredLicensesList.slice(
+    (currentLicensePage - 1) * LICENSE_ITEMS_PER_PAGE,
+    currentLicensePage * LICENSE_ITEMS_PER_PAGE
+  );
+
+  const getGroupedLicenses = (items: Licencia[]) => {
+    if (licenseGrouping === 'NONE') return { 'Todas las Licencias Asignadas': items };
+
+    return items.reduce((groups, item) => {
+      const key = item.tipo_nombre;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+      return groups;
+    }, {} as Record<string, Licencia[]>);
+  };
+
+  const groupedLicenses = getGroupedLicenses(paginatedLicenses);
+
 
   return (
     <div className="space-y-6">
@@ -445,6 +504,37 @@ const Reports: React.FC = () => {
                       </table>
                    </div>
                  ))}
+
+                 {/* Pagination Controls for Assignments */}
+                 {filteredAssignmentsList.length > 0 && (
+                    <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-sm text-slate-500">
+                            Mostrando <span className="font-medium">{((currentAssignPage - 1) * ASSIGN_ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentAssignPage * ASSIGN_ITEMS_PER_PAGE, filteredAssignmentsList.length)}</span> de <span className="font-medium">{filteredAssignmentsList.length}</span> asignaciones
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentAssignPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentAssignPage === 1}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            
+                            <span className="text-sm font-medium text-slate-600 px-2">
+                                Página {currentAssignPage} de {totalAssignPages}
+                            </span>
+
+                            <button
+                                onClick={() => setCurrentAssignPage(prev => Math.min(prev + 1, totalAssignPages))}
+                                disabled={currentAssignPage === totalAssignPages}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
                </div>
             )}
           </div>
@@ -517,37 +607,118 @@ const Reports: React.FC = () => {
 
         {/* -- Tab: Licenses Report -- */}
         {activeTab === 'LICENSES' && (
-            <div>
-                <div className="p-4 bg-purple-50 border-b border-purple-100">
-                    <p className="text-sm text-purple-800">
-                        Reporte de distribución de licencias por Usuario y Departamento.
-                    </p>
+            <div className="flex flex-col">
+                {/* Filters and Grouping Controls for Licenses */}
+                <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-4 md:space-y-0 md:flex md:items-end md:gap-4">
+                    <div className="flex-1">
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Usuario</label>
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                            <select 
+                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                value={licenseFilterUser}
+                                onChange={(e) => setLicenseFilterUser(e.target.value)}
+                            >
+                                <option value="">Todos los Usuarios</option>
+                                {allUsuarios.map(u => (
+                                    <option key={u.id} value={u.nombre_completo}>{u.nombre_completo}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center border rounded-lg overflow-hidden bg-white">
+                        <button 
+                            onClick={() => setLicenseGrouping('NONE')}
+                            className={`px-4 py-2 text-sm font-medium flex items-center gap-2 ${licenseGrouping === 'NONE' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <Layers className="w-4 h-4" /> Plano
+                        </button>
+                        <div className="w-px h-8 bg-slate-200"></div>
+                        <button 
+                            onClick={() => setLicenseGrouping('TYPE')}
+                            className={`px-4 py-2 text-sm font-medium flex items-center gap-2 ${licenseGrouping === 'TYPE' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <Shield className="w-4 h-4" /> Agrupar por Tipo
+                        </button>
+                    </div>
                 </div>
-                <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-white">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Usuario</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Departamento</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Licencia</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Clave / ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
-                        {licencias.filter(l => l.usuario_id).map(lic => (
-                            <tr key={lic.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{lic.usuario_nombre}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{lic.usuario_departamento}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{lic.tipo_nombre}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{lic.clave}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.fecha_vencimiento}</td>
-                            </tr>
+
+                {/* Report Content */}
+                {Object.entries(groupedLicenses).length === 0 ? (
+                    <div className="p-12 text-center text-slate-500">No hay licencias asignadas con los filtros actuales.</div>
+                ) : (
+                    <div>
+                        {Object.entries(groupedLicenses).map(([groupKey, items]) => (
+                             <div key={groupKey} className="border-b border-slate-200 last:border-0">
+                                {licenseGrouping === 'TYPE' && (
+                                    <div className="px-6 py-3 bg-slate-50 font-semibold text-slate-700 border-b border-slate-100 flex items-center gap-2">
+                                        <Shield className="w-4 h-4 text-purple-500" />
+                                        {groupKey} <span className="text-slate-400 font-normal text-sm">({items.length} asignaciones)</span>
+                                    </div>
+                                )}
+
+                                <table className="min-w-full divide-y divide-slate-200">
+                                    {licenseGrouping === 'NONE' && (
+                                        <thead className="bg-white">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Usuario</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Departamento</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Licencia</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Clave / ID</th>
+                                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
+                                            </tr>
+                                        </thead>
+                                    )}
+                                    <tbody className="bg-white divide-y divide-slate-100">
+                                        {items.map(lic => (
+                                            <tr key={lic.id} className="hover:bg-slate-50">
+                                                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{lic.usuario_nombre}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{lic.usuario_departamento}</td>
+                                                {licenseGrouping !== 'TYPE' && (
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{lic.tipo_nombre}</td>
+                                                )}
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{lic.clave}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.fecha_vencimiento}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                             </div>
                         ))}
-                        {licencias.filter(l => l.usuario_id).length === 0 && (
-                            <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No hay licencias asignadas actualmente.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                    </div>
+                )}
+
+                 {/* Pagination Controls for Licenses */}
+                 {filteredLicensesList.length > 0 && (
+                    <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-sm text-slate-500">
+                            Mostrando <span className="font-medium">{((currentLicensePage - 1) * LICENSE_ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentLicensePage * LICENSE_ITEMS_PER_PAGE, filteredLicensesList.length)}</span> de <span className="font-medium">{filteredLicensesList.length}</span> licencias
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentLicensePage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentLicensePage === 1}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            
+                            <span className="text-sm font-medium text-slate-600 px-2">
+                                Página {currentLicensePage} de {totalLicensePages}
+                            </span>
+
+                            <button
+                                onClick={() => setCurrentLicensePage(prev => Math.min(prev + 1, totalLicensePages))}
+                                disabled={currentLicensePage === totalLicensePages}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 

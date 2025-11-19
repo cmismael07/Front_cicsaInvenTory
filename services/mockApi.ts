@@ -565,6 +565,17 @@ export const api = {
     if (!licencia || !usuario) throw new Error("Licencia o Usuario no válido");
     if (licencia.usuario_id) throw new Error("Licencia ya asignada");
 
+    // --- Check if user already has a license of this type ---
+    const alreadyHasType = MOCK_LICENCIAS.some(l => 
+      l.usuario_id === usuarioId && 
+      l.tipo_id === licencia.tipo_id
+    );
+
+    if (alreadyHasType) {
+      throw new Error(`El usuario ${usuario.nombre_completo} ya tiene una licencia de tipo "${licencia.tipo_nombre}" asignada.`);
+    }
+    // --------------------------------------------------------
+
     licencia.usuario_id = usuario.id;
     licencia.usuario_nombre = usuario.nombre_completo;
     licencia.usuario_departamento = usuario.departamento_nombre;

@@ -2,24 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import * as d3 from 'd3-scale';
 import { api } from '../services/mockApi';
-import { ReporteGarantia } from '../types';
-import { AlertTriangle, Box, CheckCircle, Wrench } from 'lucide-react';
+import { ReporteGarantia, Licencia } from '../types';
+import { AlertTriangle, Box, CheckCircle, Wrench, Key } from 'lucide-react';
 import StatCard from './StatCard';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [warrantyData, setWarrantyData] = useState<ReporteGarantia[]>([]);
+  const [licenseData, setLicenseData] = useState<{total: number, available: number}>({ total: 0, available: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, warranties] = await Promise.all([
+        const [statsData, warranties, licencias] = await Promise.all([
           api.getStats(),
-          api.getWarrantyReport()
+          api.getWarrantyReport(),
+          api.getLicencias()
         ]);
         setStats(statsData);
         setWarrantyData(warranties);
+        
+        // Calculate License Stats
+        const totalLic = licencias.length;
+        const availableLic = licencias.filter(l => !l.usuario_id).length;
+        setLicenseData({ total: totalLic, available: availableLic });
+
       } catch (error) {
         console.error("Error fetching dashboard data", error);
       } finally {
@@ -57,7 +65,7 @@ const Dashboard: React.FC = () => {
       <h2 className="text-2xl font-bold text-slate-800">Dashboard General</h2>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard 
           title="Total Equipos" 
           value={stats.total} 
@@ -75,6 +83,12 @@ const Dashboard: React.FC = () => {
           value={stats.maintenance} 
           icon={<Wrench className="w-6 h-6 text-amber-600" />} 
           bgColor="bg-amber-50" 
+        />
+         <StatCard 
+          title="Licencias Libres" 
+          value={licenseData.available} 
+          icon={<Key className="w-6 h-6 text-purple-600" />} 
+          bgColor="bg-purple-50" 
         />
         <StatCard 
           title="Garantías Críticas" 

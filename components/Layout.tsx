@@ -66,14 +66,19 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 fixed h-full z-20">
         <div className="p-6 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
               <Laptop className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-800">SysInventario</span>
+            <span className="text-2xl font-bold tracking-tight">
+              <span className="text-orange-500">I</span>
+              <span className="text-blue-600">nven</span>
+              <span className="text-orange-500">T</span>
+              <span className="text-blue-600">ory</span>
+            </span>
           </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
@@ -93,10 +98,15 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       {/* Mobile Sidebar */}
       <aside className={`fixed inset-y-0 left-0 w-64 bg-white z-40 transform transition-transform duration-300 md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex justify-between items-center border-b border-slate-100">
-          <span className="text-xl font-bold text-slate-800">Menu</span>
+          <span className="text-2xl font-bold tracking-tight">
+              <span className="text-orange-500">I</span>
+              <span className="text-blue-600">nven</span>
+              <span className="text-orange-500">T</span>
+              <span className="text-blue-600">ory</span>
+          </span>
           <button onClick={() => setIsMobileMenuOpen(false)}><X className="w-6 h-6 text-slate-500" /></button>
         </div>
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto">
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
