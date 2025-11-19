@@ -84,6 +84,22 @@ let MOCK_LICENCIAS: Licencia[] = [
   { id: 4, tipo_id: 2, tipo_nombre: 'Adobe Creative Cloud', clave: 'KEY-ADOBE-001', fecha_compra: '2023-06-01', fecha_vencimiento: '2024-06-01', usuario_id: null }, // Available
 ];
 
+// Scenario for Low Stock Alert (5%)
+// Type 3: Antivirus ESET Endpoint - 20 Total, 19 Assigned, 1 Available (5%)
+for (let i = 0; i < 20; i++) {
+  MOCK_LICENCIAS.push({
+    id: 500 + i,
+    tipo_id: 3,
+    tipo_nombre: 'Antivirus ESET Endpoint',
+    clave: `KEY-ESET-${500 + i}`,
+    fecha_compra: '2024-01-01',
+    fecha_vencimiento: '2025-01-01',
+    usuario_id: i < 19 ? 999 : null, // 19 assigned to placeholder user, 1 available
+    usuario_nombre: i < 19 ? 'Usuario Generico' : undefined,
+    usuario_departamento: 'General'
+  });
+}
+
 const MOCK_NOTIFICATIONS: Notificacion[] = [
   { id: 1, title: 'Garantía por vencer', mensaje: 'El equipo EQ-2021-045 vence su garantía en 15 días.', leido: false, fecha: '2024-05-20T10:00:00', tipo: 'warning' },
   { id: 2, title: 'Mantenimiento completado', mensaje: 'El equipo EQ-2020-012 ha regresado del taller.', leido: true, fecha: '2024-05-19T14:30:00', tipo: 'info' },
@@ -692,7 +708,7 @@ const mockApiImplementation = {
           notifs.push({
             id: Date.now() + tipo.id,
             titulo: 'Stock de Licencias Crítico',
-            mensaje: `Quedan ${available} licencias disponibles de ${tipo.nombre} (${(ratio * 100).toFixed(1)}%). Se sugiere adquirir más.`,
+            mensaje: `Atención: El stock de licencias para ${tipo.nombre} ha descendido al ${(ratio * 100).toFixed(1)}% (Disponibles: ${available}/${total}).`,
             leido: false,
             fecha: new Date().toISOString(),
             tipo: 'alert'

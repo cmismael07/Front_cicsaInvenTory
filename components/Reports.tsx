@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/mockApi';
-import { Equipo, HistorialMovimiento, TipoEquipo, HistorialAsignacion, Usuario, RegistroMantenimiento, Licencia } from '../types';
-import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop, Key, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Equipo, HistorialMovimiento, TipoEquipo, HistorialAsignacion, Usuario, RegistroMantenimiento, Licencia, TipoLicencia } from '../types';
+import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop, Key, Shield, ChevronLeft, ChevronRight, Tag, FileSpreadsheet, ChevronDown } from 'lucide-react';
 
 type ReportTab = 'REPLACEMENT' | 'HISTORY' | 'ASSIGNMENTS' | 'MAINTENANCE' | 'LICENSES';
 type GroupingMode = 'NONE' | 'USER' | 'EQUIPMENT';
@@ -21,6 +22,7 @@ const Reports: React.FC = () => {
   const [tipos, setTipos] = useState<TipoEquipo[]>([]);
   const [allUsuarios, setAllUsuarios] = useState<Usuario[]>([]);
   const [allEquipos, setAllEquipos] = useState<Equipo[]>([]);
+  const [licenseTypes, setLicenseTypes] = useState<TipoLicencia[]>([]);
 
   // Filter States
   const [selectedTipoId, setSelectedTipoId] = useState<number | string>('');
@@ -34,27 +36,33 @@ const Reports: React.FC = () => {
 
   // License Report Specific States
   const [licenseFilterUser, setLicenseFilterUser] = useState<string>('');
+  const [licenseFilterType, setLicenseFilterType] = useState<string>('');
   const [licenseGrouping, setLicenseGrouping] = useState<LicenseGroupingMode>('NONE');
   
   // License Pagination
   const [currentLicensePage, setCurrentLicensePage] = useState(1);
   const LICENSE_ITEMS_PER_PAGE = 10;
 
+  // Export Menu State
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadInitial = async () => {
       setLoading(true);
-      const [candData, tiposData, userData, equipData] = await Promise.all([
+      const [candData, tiposData, userData, equipData, licTypesData] = await Promise.all([
         api.getReplacementCandidates(),
         api.getTiposEquipo(),
         api.getUsuarios(),
-        api.getEquipos()
+        api.getEquipos(),
+        api.getTipoLicencias()
       ]);
       setCandidates(candData);
       setTipos(tiposData);
       setAllUsuarios(userData);
       setAllEquipos(equipData);
+      setLicenseTypes(licTypesData);
       setLoading(false);
     };
     loadInitial();
@@ -75,7 +83,7 @@ const Reports: React.FC = () => {
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentLicensePage(1);
-  }, [licenseFilterUser, licenseGrouping, activeTab]);
+  }, [licenseFilterUser, licenseFilterType, licenseGrouping, activeTab]);
 
   useEffect(() => {
     setCurrentAssignPage(1);
@@ -162,7 +170,8 @@ const Reports: React.FC = () => {
       // Only show assigned licenses in this report
       const isAssigned = l.usuario_id !== null && l.usuario_id !== undefined;
       const matchesUser = licenseFilterUser ? l.usuario_nombre === licenseFilterUser : true;
-      return isAssigned && matchesUser;
+      const matchesType = licenseFilterType ? l.tipo_id === Number(licenseFilterType) : true;
+      return isAssigned && matchesUser && matchesType;
     });
   };
 
@@ -188,15 +197,154 @@ const Reports: React.FC = () => {
 
   const groupedLicenses = getGroupedLicenses(paginatedLicenses);
 
+  // --- Export Logic (CSV Fallback) ---
+  const convertToCSV = (objArray: any[]) => {
+    if (objArray.length === 0) return '';
+    const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+    let str = '';
+    
+    // Header
+    str += Object.keys(array[0]).join(',') + '\r\n';
+    
+    // Rows
+    for (let i = 0; i < array.length; i++) {
+        let line = '';
+        for (const index in array[i]) {
+            if (line !== '') line += ',';
+            // Handle commas inside fields
+            const val = array[i][index];
+            const stringVal = val === null || val === undefined ? '' : val.toString();
+            line += `"${stringVal}"`;
+        }
+        str += line + '\r\n';
+    }
+    return str;
+  };
+
+  const downloadCSV = (data: any[], filename: string) => {
+    const csvData = convertToCSV(data);
+    // Add BOM for Excel to recognize UTF-8 (fix for accents)
+    const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename + '.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExport = (format: 'excel' | 'pdf') => {
+      setIsExportMenuOpen(false);
+      const timestamp = new Date().toISOString().split('T')[0];
+
+      if (format === 'pdf') {
+          alert("Preparando vista de impresión para PDF. Por favor, seleccione 'Guardar como PDF' en el diálogo de impresión.");
+          window.print();
+          return;
+      }
+
+      // Export Data Preparation
+      let dataToExport: any[] = [];
+      let filename = `reporte_${activeTab.toLowerCase()}_${timestamp}`;
+
+      switch (activeTab) {
+          case 'REPLACEMENT':
+              dataToExport = candidates.map(c => ({
+                  Codigo: c.codigo_activo,
+                  Marca: c.marca,
+                  Modelo: c.modelo,
+                  FechaCompra: c.fecha_compra,
+                  Antiguedad: `${calculateAge(c.fecha_compra)} Años`,
+                  Observaciones: c.observaciones
+              }));
+              break;
+          case 'HISTORY':
+              dataToExport = historial.map(h => ({
+                  Fecha: h.fecha,
+                  Equipo: h.equipo_codigo,
+                  Accion: h.tipo_accion,
+                  Responsable: h.usuario_responsable,
+                  Detalle: h.detalle
+              }));
+              break;
+          case 'ASSIGNMENTS':
+              dataToExport = filteredAssignmentsList.map(a => ({
+                  Usuario: a.usuario_nombre,
+                  Departamento: a.usuario_departamento,
+                  Equipo: a.equipo_codigo,
+                  Modelo: a.equipo_modelo,
+                  FechaInicio: a.fecha_inicio,
+                  FechaFin: a.fecha_fin || 'Vigente',
+                  Ubicacion: a.ubicacion
+              }));
+              break;
+          case 'MAINTENANCE':
+              dataToExport = mantenimientos.map(m => ({
+                  Fecha: m.fecha,
+                  Equipo: m.equipo_codigo,
+                  Modelo: m.equipo_modelo,
+                  Tipo: m.tipo_mantenimiento,
+                  Proveedor: m.proveedor,
+                  Costo: m.costo,
+                  Descripcion: m.descripcion
+              }));
+              break;
+          case 'LICENSES':
+              dataToExport = filteredLicensesList.map(l => ({
+                  Licencia: l.tipo_nombre,
+                  Clave: l.clave,
+                  Usuario: l.usuario_nombre,
+                  Departamento: l.usuario_departamento,
+                  Vencimiento: l.fecha_vencimiento
+              }));
+              break;
+      }
+
+      if (dataToExport.length > 0) {
+          downloadCSV(dataToExport, filename);
+      } else {
+          alert("No hay datos para exportar con los filtros actuales.");
+      }
+  };
+
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Reportes del Sistema</h2>
-        <button className="flex items-center gap-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <Download className="w-4 h-4" />
-          Exportar
-        </button>
+        
+        <div className="relative">
+            <button 
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+                <Download className="w-4 h-4" />
+                Exportar
+                <ChevronDown className="w-3 h-3 ml-1" />
+            </button>
+
+            {isExportMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-20 py-1 animate-in fade-in zoom-in-95 duration-100">
+                    <button 
+                        onClick={() => handleExport('excel')}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-green-50 flex items-center gap-2 hover:text-green-700"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" /> Excel (CSV)
+                    </button>
+                    <button 
+                        onClick={() => handleExport('pdf')}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-red-50 flex items-center gap-2 hover:text-red-700"
+                    >
+                        <FileText className="w-4 h-4" /> PDF
+                    </button>
+                </div>
+            )}
+            
+            {/* Overlay to close menu when clicking outside */}
+            {isExportMenuOpen && (
+                <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
+            )}
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -610,20 +758,38 @@ const Reports: React.FC = () => {
             <div className="flex flex-col">
                 {/* Filters and Grouping Controls for Licenses */}
                 <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-4 md:space-y-0 md:flex md:items-end md:gap-4">
-                    <div className="flex-1">
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Usuario</label>
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                            <select 
-                                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                value={licenseFilterUser}
-                                onChange={(e) => setLicenseFilterUser(e.target.value)}
-                            >
-                                <option value="">Todos los Usuarios</option>
-                                {allUsuarios.map(u => (
-                                    <option key={u.id} value={u.nombre_completo}>{u.nombre_completo}</option>
-                                ))}
-                            </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Usuario</label>
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <select 
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={licenseFilterUser}
+                                    onChange={(e) => setLicenseFilterUser(e.target.value)}
+                                >
+                                    <option value="">Todos los Usuarios</option>
+                                    {allUsuarios.map(u => (
+                                        <option key={u.id} value={u.nombre_completo}>{u.nombre_completo}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Tipo Licencia</label>
+                            <div className="relative">
+                                <Tag className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <select 
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={licenseFilterType}
+                                    onChange={(e) => setLicenseFilterType(e.target.value)}
+                                >
+                                    <option value="">Todos los Tipos</option>
+                                    {licenseTypes.map(t => (
+                                        <option key={t.id} value={t.id}>{t.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
