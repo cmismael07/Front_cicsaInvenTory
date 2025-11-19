@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
 import { TipoLicencia, Licencia, Usuario } from '../types';
-import { Key, Users, Plus, Trash2, Edit, Save, X, UserCheck, Shield, RefreshCw } from 'lucide-react';
+import { Key, Users, Plus, Trash2, Edit, Save, X, UserCheck, Shield, RefreshCw, Unplug, AlertCircle, AlertTriangle, PackagePlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import EntityManager from './EntityManager';
 
 const LicenseManager: React.FC = () => {
@@ -12,33 +11,102 @@ const LicenseManager: React.FC = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Stock Modal
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Stock Modal (Existing)
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockForm, setStockForm] = useState({ tipoId: 0, cantidad: 1, fechaVencimiento: '' });
+
+  // Create Type Modal (New)
+  const [isCreateTypeModalOpen, setIsCreateTypeModalOpen] = useState(false);
+  const [createTypeForm, setCreateTypeForm] = useState({
+    nombre: '',
+    proveedor: '',
+    descripcion: '',
+    stockInicial: 0,
+    fechaVencimiento: ''
+  });
 
   // Assign Modal
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedLicense, setSelectedLicense] = useState<Licencia | null>(null);
   const [assignUserId, setAssignUserId] = useState<number | string>('');
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+
+  // Unassign Modal
+  const [isUnassignModalOpen, setIsUnassignModalOpen] = useState(false);
+  const [licenseToUnassign, setLicenseToUnassign] = useState<Licencia | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    const [t, l, u] = await Promise.all([
-      api.getTipoLicencias(),
-      api.getLicencias(),
-      api.getUsuarios()
-    ]);
-    setTipos(t);
-    setLicencias(l);
-    setUsuarios(u.filter(user => user.activo)); // Only active users can receive licenses
-    setLoading(false);
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+        const [t, l, u] = await Promise.all([
+        api.getTipoLicencias(),
+        api.getLicencias(),
+        api.getUsuarios()
+        ]);
+        setTipos(t);
+        setLicencias(l);
+        setUsuarios(u.filter(user => user.activo)); // Only active users can receive licenses
+    } catch (e) {
+        console.error("Error loading license data", e);
+    } finally {
+        setLoading(false);
+    }
   };
 
+  // Pagination Logic
+  const totalPages = Math.ceil(licencias.length / ITEMS_PER_PAGE);
+  const paginatedLicencias = licencias.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   // -- Logic for Catalog Tab --
+  
+  const handleOpenCreateType = () => {
+      setCreateTypeForm({
+          nombre: '',
+          proveedor: '',
+          descripcion: '',
+          stockInicial: 0,
+          fechaVencimiento: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+      });
+      setIsCreateTypeModalOpen(true);
+  };
+
+  const submitCreateType = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+          // 1. Create the Type
+          const newType = await api.createTipoLicencia({
+              nombre: createTypeForm.nombre,
+              proveedor: createTypeForm.proveedor,
+              descripcion: createTypeForm.descripcion
+          });
+
+          // 2. Add Initial Stock if requested
+          if (createTypeForm.stockInicial > 0) {
+             await api.agregarStockLicencias(
+                 newType.id, 
+                 createTypeForm.stockInicial, 
+                 createTypeForm.fechaVencimiento
+             );
+          }
+
+          setIsCreateTypeModalOpen(false);
+          loadData(false);
+          alert('Tipo de licencia y stock inicial creados correctamente');
+      } catch (error: any) {
+          alert('Error: ' + error.message);
+      }
+  };
   
   const handleAddStock = (tipoId: number) => {
     setStockForm({ 
@@ -54,7 +122,7 @@ const LicenseManager: React.FC = () => {
     try {
         await api.agregarStockLicencias(stockForm.tipoId, stockForm.cantidad, stockForm.fechaVencimiento);
         setIsStockModalOpen(false);
-        loadData();
+        loadData(false); // Silent reload
         alert('Stock agregado correctamente');
     } catch (error: any) {
         alert(error.message);
@@ -66,25 +134,52 @@ const LicenseManager: React.FC = () => {
   const handleAssign = (licencia: Licencia) => {
     setSelectedLicense(licencia);
     setAssignUserId('');
+    setAssignmentError(null);
     setIsAssignModalOpen(true);
   };
 
   const submitAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLicense || !assignUserId) return;
+    setAssignmentError(null);
+
+    // Client-side validation: Check if user already has a license of this type
+    const targetUserId = Number(assignUserId);
+    const userHasType = licencias.some(l => 
+        l.usuario_id === targetUserId && 
+        l.tipo_id === selectedLicense.tipo_id
+    );
+
+    if (userHasType) {
+        const user = usuarios.find(u => u.id === targetUserId);
+        setAssignmentError(`El usuario ${user?.nombre_completo} ya tiene asignada una licencia de tipo "${selectedLicense.tipo_nombre}".`);
+        return;
+    }
+
     try {
-        await api.asignarLicencia(selectedLicense.id, Number(assignUserId));
+        await api.asignarLicencia(selectedLicense.id, targetUserId);
         setIsAssignModalOpen(false);
-        loadData();
+        loadData(false); 
     } catch (error: any) {
-        alert(error.message);
+        setAssignmentError(error.message);
     }
   };
 
-  const handleUnassign = async (licencia: Licencia) => {
-    if (window.confirm(`¿Liberar la licencia asignada a ${licencia.usuario_nombre}?`)) {
-        await api.liberarLicencia(licencia.id);
-        loadData();
+  const handleOpenUnassignModal = (licencia: Licencia) => {
+    setLicenseToUnassign(licencia);
+    setIsUnassignModalOpen(true);
+  };
+
+  const confirmUnassign = async () => {
+    if (!licenseToUnassign) return;
+    try {
+        await api.liberarLicencia(licenseToUnassign.id);
+        setIsUnassignModalOpen(false);
+        setLicenseToUnassign(null);
+        await loadData(false); 
+    } catch (error: any) {
+        console.error(error);
+        alert('Error al liberar licencia: ' + error.message);
     }
   };
 
@@ -125,7 +220,7 @@ const LicenseManager: React.FC = () => {
 
       {/* Content */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        {loading ? <div className="text-center py-8">Cargando datos...</div> : (
+        {loading ? <div className="text-center py-8 text-slate-500">Cargando datos...</div> : (
             <>
                 {/* TAB 1: CATALOG & TYPES */}
                 {activeTab === 'CATALOG' && (
@@ -156,15 +251,8 @@ const LicenseManager: React.FC = () => {
                                     </div>
                                 )
                             })}
-                            {/* New Type Card Placeholder / Simple Action */}
                              <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 flex flex-col items-center justify-center text-slate-400 hover:border-purple-300 hover:text-purple-600 cursor-pointer transition-colors min-h-[150px]"
-                                onClick={() => {
-                                    const nombre = prompt("Nombre del nuevo tipo de licencia:");
-                                    if (nombre) {
-                                        const proveedor = prompt("Proveedor:");
-                                        api.createTipoLicencia({ nombre, proveedor: proveedor || 'General', descripcion: '' }).then(loadData);
-                                    }
-                                }}
+                                onClick={handleOpenCreateType}
                              >
                                 <Plus className="w-8 h-8 mb-2" />
                                 <span>Nuevo Tipo de Licencia</span>
@@ -175,49 +263,168 @@ const LicenseManager: React.FC = () => {
 
                 {/* TAB 2: ASSIGNMENTS */}
                 {activeTab === 'ASSIGNMENTS' && (
-                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-200">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Licencia / Clave</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Tipo</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Asignado A</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200">
-                                {licencias.map(lic => (
-                                    <tr key={lic.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-slate-700">{lic.clave}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.tipo_nombre}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.fecha_vencimiento}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            {lic.usuario_id ? (
-                                                <div>
-                                                    <div className="font-medium text-slate-900">{lic.usuario_nombre}</div>
-                                                    <div className="text-xs text-slate-500">{lic.usuario_departamento}</div>
-                                                </div>
-                                            ) : (
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Disponible</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                            {lic.usuario_id ? (
-                                                <button onClick={() => handleUnassign(lic)} className="text-red-600 hover:text-red-800 font-medium text-xs">Liberar</button>
-                                            ) : (
-                                                <button onClick={() => handleAssign(lic)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Asignar</button>
-                                            )}
-                                        </td>
+                     <div className="flex flex-col">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Licencia / Clave</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Tipo</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Asignado A</th>
+                                        <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Acción</th>
                                     </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                    {paginatedLicencias.map(lic => (
+                                        <tr key={lic.id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-slate-700">{lic.clave}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.tipo_nombre}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.fecha_vencimiento}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                {lic.usuario_id ? (
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">{lic.usuario_nombre}</div>
+                                                        <div className="text-xs text-slate-500">{lic.usuario_departamento}</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Disponible</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                                <div className="flex justify-end">
+                                                {lic.usuario_id ? (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleOpenUnassignModal(lic)} 
+                                                        className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium text-xs border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition-colors cursor-pointer"
+                                                    >
+                                                        <Unplug className="w-3 h-3" /> Liberar
+                                                    </button>
+                                                ) : (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleAssign(lic)} 
+                                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-xs border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded transition-colors cursor-pointer"
+                                                    >
+                                                        <UserCheck className="w-3 h-3" /> Asignar
+                                                    </button>
+                                                )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {licencias.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay licencias registradas.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {licencias.length > 0 && (
+                          <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+                            <div className="text-sm text-slate-500">
+                              Mostrando <span className="font-medium">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, licencias.length)}</span> de <span className="font-medium">{licencias.length}</span> licencias
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              
+                              <div className="hidden sm:flex gap-1">
+                                {Array.from({ length: totalPages }).map((_, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setCurrentPage(idx + 1)}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+                                      currentPage === idx + 1 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'text-slate-600 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    {idx + 1}
+                                  </button>
                                 ))}
-                            </tbody>
-                        </table>
+                              </div>
+
+                              <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                      </div>
                 )}
             </>
         )}
       </div>
+
+      {/* Create Type Modal */}
+      {isCreateTypeModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsCreateTypeModalOpen(false)}>
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-4 border-b pb-3">
+                      <h3 className="text-lg font-bold text-slate-800">Nuevo Tipo de Licencia</h3>
+                      <button onClick={() => setIsCreateTypeModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                  </div>
+                  <form onSubmit={submitCreateType} className="space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700">Nombre</label>
+                          <input required type="text" className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500" 
+                              value={createTypeForm.nombre} onChange={e => setCreateTypeForm({...createTypeForm, nombre: e.target.value})} placeholder="Ej. Microsoft 365 Business" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700">Proveedor</label>
+                          <input required type="text" className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500" 
+                              value={createTypeForm.proveedor} onChange={e => setCreateTypeForm({...createTypeForm, proveedor: e.target.value})} placeholder="Ej. Microsoft" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700">Descripción</label>
+                          <textarea className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500" rows={2}
+                              value={createTypeForm.descripcion} onChange={e => setCreateTypeForm({...createTypeForm, descripcion: e.target.value})} />
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-3">
+                              <PackagePlus className="w-4 h-4 text-purple-600" />
+                              <span className="text-sm font-semibold text-slate-700">Stock Inicial (Opcional)</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="block text-xs font-medium text-slate-600 mb-1">Cantidad</label>
+                                  <input type="number" min="0" className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500" 
+                                      value={createTypeForm.stockInicial} onChange={e => setCreateTypeForm({...createTypeForm, stockInicial: Number(e.target.value)})} />
+                              </div>
+                              <div>
+                                  <label className="block text-xs font-medium text-slate-600 mb-1">Vencimiento</label>
+                                  <input type="date" className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500" 
+                                      disabled={createTypeForm.stockInicial <= 0}
+                                      required={createTypeForm.stockInicial > 0}
+                                      value={createTypeForm.fechaVencimiento} onChange={e => setCreateTypeForm({...createTypeForm, fechaVencimiento: e.target.value})} />
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-4">
+                          <button type="button" onClick={() => setIsCreateTypeModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancelar</button>
+                          <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700">Crear</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
 
       {/* Add Stock Modal */}
       {isStockModalOpen && (
@@ -246,24 +453,84 @@ const LicenseManager: React.FC = () => {
       {isAssignModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsAssignModalOpen(false)}>
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-                <h3 className="text-lg font-bold text-slate-800 mb-4">Asignar Licencia</h3>
-                <p className="text-sm text-slate-500 mb-4">Licencia: {selectedLicense?.tipo_nombre} ({selectedLicense?.clave})</p>
+                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                    <h3 className="text-lg font-bold text-slate-800">Asignar Licencia</h3>
+                    <button onClick={() => setIsAssignModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                
+                <div className="mb-6 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <p className="text-sm font-medium text-purple-800">{selectedLicense?.tipo_nombre}</p>
+                    <p className="text-xs text-purple-600 font-mono mt-1">ID: {selectedLicense?.clave}</p>
+                </div>
+
                 <form onSubmit={submitAssignment} className="space-y-4">
+                    {assignmentError && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                            <span className="text-sm">{assignmentError}</span>
+                        </div>
+                    )}
+
                     <div>
-                        <label className="block text-sm font-medium text-slate-700">Usuario</label>
-                        <select required className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500 bg-white" value={assignUserId} onChange={e => setAssignUserId(e.target.value)}>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Usuario Destino</label>
+                        <select 
+                            required 
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500 bg-white" 
+                            value={assignUserId} 
+                            onChange={e => {
+                                setAssignUserId(e.target.value);
+                                setAssignmentError(null); 
+                            }}
+                        >
                             <option value="">Seleccionar Usuario...</option>
                             {usuarios.map(u => (
                                 <option key={u.id} value={u.id}>{u.nombre_completo} - {u.departamento_nombre}</option>
                             ))}
                         </select>
                     </div>
-                    <div className="flex justify-end gap-2 pt-4">
-                        <button type="button" onClick={() => setIsAssignModalOpen(false)} className="px-4 py-2 text-slate-600">Cancelar</button>
-                        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg">Asignar</button>
+                    <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+                        <button type="button" onClick={() => setIsAssignModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Asignar</button>
                     </div>
                 </form>
             </div>
+        </div>
+      )}
+
+      {/* Unassign Confirmation Modal */}
+      {isUnassignModalOpen && licenseToUnassign && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsUnassignModalOpen(false)}>
+             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-start gap-4 mb-4">
+                    <div className="p-3 bg-red-100 rounded-full">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">Liberar Licencia</h3>
+                        <p className="text-slate-600 text-sm mt-1">
+                            ¿Estás seguro de que deseas liberar esta licencia asignada a <span className="font-semibold text-slate-800">{licenseToUnassign.usuario_nombre}</span>?
+                        </p>
+                        <p className="text-slate-500 text-xs mt-2">
+                            El usuario perderá el acceso asociado a esta licencia de forma inmediata.
+                        </p>
+                    </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                    <button 
+                        onClick={() => setIsUnassignModalOpen(false)} 
+                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={confirmUnassign} 
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Unplug className="w-4 h-4" /> Confirmar Liberación
+                    </button>
+                </div>
+             </div>
         </div>
       )}
     </div>

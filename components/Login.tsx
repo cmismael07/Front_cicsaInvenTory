@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Laptop } from 'lucide-react';
 import { api } from '../services/mockApi';
@@ -31,10 +32,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-xl mx-auto flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-blue-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-md">
             <Laptop className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">SysInventario</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">
+            <span className="text-orange-500">I</span>
+            <span className="text-blue-600">nven</span>
+            <span className="text-orange-500">T</span>
+            <span className="text-blue-600">ory</span>
+          </h1>
           <p className="text-slate-500">Acceso al Sistema de Gestión</p>
         </div>
         
@@ -52,7 +58,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" 
             />
           </div>
           <div>
@@ -62,13 +68,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow" 
             />
           </div>
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-all disabled:opacity-50"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 shadow-sm hover:shadow"
           >
             {loading ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
