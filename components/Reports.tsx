@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/mockApi';
-import { Equipo, HistorialMovimiento, TipoEquipo, HistorialAsignacion, Usuario, RegistroMantenimiento } from '../types';
-import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop } from 'lucide-react';
+import { Equipo, HistorialMovimiento, TipoEquipo, HistorialAsignacion, Usuario, RegistroMantenimiento, Licencia } from '../types';
+import { Download, RefreshCw, History, FileText, CalendarRange, Wrench, Filter, Layers, User, Laptop, Key } from 'lucide-react';
 
-type ReportTab = 'REPLACEMENT' | 'HISTORY' | 'ASSIGNMENTS' | 'MAINTENANCE';
+type ReportTab = 'REPLACEMENT' | 'HISTORY' | 'ASSIGNMENTS' | 'MAINTENANCE' | 'LICENSES';
 type GroupingMode = 'NONE' | 'USER' | 'EQUIPMENT';
 
 const Reports: React.FC = () => {
@@ -15,6 +15,7 @@ const Reports: React.FC = () => {
   const [historial, setHistorial] = useState<HistorialMovimiento[]>([]);
   const [asignaciones, setAsignaciones] = useState<HistorialAsignacion[]>([]);
   const [mantenimientos, setMantenimientos] = useState<RegistroMantenimiento[]>([]);
+  const [licencias, setLicencias] = useState<Licencia[]>([]);
   
   // Catalogs for Filters
   const [tipos, setTipos] = useState<TipoEquipo[]>([]);
@@ -56,6 +57,8 @@ const Reports: React.FC = () => {
       fetchAsignaciones();
     } else if (activeTab === 'MAINTENANCE') {
       fetchMantenimientos();
+    } else if (activeTab === 'LICENSES') {
+      fetchLicencias();
     }
   }, [activeTab, selectedTipoId]);
 
@@ -77,6 +80,13 @@ const Reports: React.FC = () => {
     setLoading(true);
     const data = await api.getHistorialMantenimiento(selectedTipoId ? Number(selectedTipoId) : undefined);
     setMantenimientos(data);
+    setLoading(false);
+  }
+
+  const fetchLicencias = async () => {
+    setLoading(true);
+    const data = await api.getLicencias();
+    setLicencias(data);
     setLoading(false);
   }
 
@@ -120,7 +130,6 @@ const Reports: React.FC = () => {
 
   const groupedData = getGroupedAssignments();
 
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -142,7 +151,7 @@ const Reports: React.FC = () => {
           }`}
         >
           <RefreshCw className="w-4 h-4" />
-          Candidatos a Reemplazo
+          Reemplazos
         </button>
         <button
           onClick={() => setActiveTab('HISTORY')}
@@ -153,7 +162,7 @@ const Reports: React.FC = () => {
           }`}
         >
           <History className="w-4 h-4" />
-          Historial de Movimientos
+          Movimientos
         </button>
         <button
           onClick={() => setActiveTab('ASSIGNMENTS')}
@@ -164,7 +173,7 @@ const Reports: React.FC = () => {
           }`}
         >
           <CalendarRange className="w-4 h-4" />
-          Historial de Asignaciones
+          Asignaciones
         </button>
         <button
           onClick={() => setActiveTab('MAINTENANCE')}
@@ -175,7 +184,18 @@ const Reports: React.FC = () => {
           }`}
         >
           <Wrench className="w-4 h-4" />
-          Historial de Mantenimiento
+          Mantenimiento
+        </button>
+        <button
+          onClick={() => setActiveTab('LICENSES')}
+          className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'LICENSES' 
+              ? 'border-blue-600 text-blue-600' 
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Key className="w-4 h-4" />
+          Licencias
         </button>
       </div>
 
@@ -493,6 +513,42 @@ const Reports: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* -- Tab: Licenses Report -- */}
+        {activeTab === 'LICENSES' && (
+            <div>
+                <div className="p-4 bg-purple-50 border-b border-purple-100">
+                    <p className="text-sm text-purple-800">
+                        Reporte de distribución de licencias por Usuario y Departamento.
+                    </p>
+                </div>
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-white">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Usuario</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Departamento</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Licencia</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Clave / ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Vencimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {licencias.filter(l => l.usuario_id).map(lic => (
+                            <tr key={lic.id} className="hover:bg-slate-50">
+                                <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{lic.usuario_nombre}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{lic.usuario_departamento}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{lic.tipo_nombre}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">{lic.clave}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{lic.fecha_vencimiento}</td>
+                            </tr>
+                        ))}
+                        {licencias.filter(l => l.usuario_id).length === 0 && (
+                            <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No hay licencias asignadas actualmente.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         )}
 
       </div>

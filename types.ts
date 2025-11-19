@@ -115,3 +115,24 @@ export interface RegistroMantenimiento {
   costo: number;
   descripcion: string;
 }
+
+// --- New License Interfaces ---
+
+export interface TipoLicencia {
+  id: number;
+  nombre: string; // e.g., "Office 365 Business", "Adobe CC"
+  proveedor: string;
+  descripcion: string;
+}
+
+export interface Licencia {
+  id: number;
+  tipo_id: number;
+  tipo_nombre: string;
+  clave: string; // License Key or Seat Identifier
+  fecha_compra: string;
+  fecha_vencimiento: string;
+  usuario_id?: number | null; // Null if available
+  usuario_nombre?: string;
+  usuario_departamento?: string; // Cached for reporting
+}

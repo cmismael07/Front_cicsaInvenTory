@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown, Key } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Usuario, Notificacion } from '../types';
 
@@ -69,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Laptop className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-800">cicsaInvenTory</span>
+            <span className="text-xl font-bold text-slate-800">SysInventario</span>
           </div>
         </div>
         
@@ -77,6 +77,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/usuarios" icon={Users} label="Usuarios" />
           <NavItem to="/organizacion" icon={Building2} label="Organización" />
@@ -99,6 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/usuarios" icon={Users} label="Usuarios" />
           <NavItem to="/organizacion" icon={Building2} label="Organización" />
