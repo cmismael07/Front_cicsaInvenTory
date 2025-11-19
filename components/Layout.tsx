@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown } from 'lucide-react';
@@ -27,7 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.newPass !== passwordForm.confirmPass) {
-      alert("Las contraseñas no coinciden");
+      // Although button is disabled, keep this as safety
       return;
     }
     if (!user) return;
@@ -55,6 +56,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       </Link>
     );
   };
+
+  const passwordsMatch = passwordForm.newPass === passwordForm.confirmPass;
+  const isFormValid = passwordForm.newPass.length > 0 && passwordsMatch;
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -211,14 +215,31 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
                         <input 
                             type="password" 
                             required 
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none ${
+                              !passwordsMatch && passwordForm.confirmPass 
+                                ? 'border-red-300 focus:ring-red-200' 
+                                : 'border-slate-300 focus:ring-blue-500'
+                            }`}
                             value={passwordForm.confirmPass}
                             onChange={e => setPasswordForm({...passwordForm, confirmPass: e.target.value})}
                         />
+                        {!passwordsMatch && passwordForm.confirmPass && (
+                          <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden.</p>
+                        )}
                     </div>
                     <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                         <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancelar</button>
-                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">Actualizar</button>
+                        <button 
+                          type="submit" 
+                          disabled={!isFormValid}
+                          className={`px-4 py-2 rounded-lg font-medium text-white transition-colors ${
+                            isFormValid 
+                              ? 'bg-blue-600 hover:bg-blue-700' 
+                              : 'bg-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          Actualizar
+                        </button>
                     </div>
                 </form>
             </div>
