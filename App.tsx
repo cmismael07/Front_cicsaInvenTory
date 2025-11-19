@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
@@ -7,6 +8,7 @@ import Reports from './components/Reports';
 import OrganizationManager from './components/OrganizationManager';
 import UserManager from './components/UserManager';
 import MaintenanceManager from './components/MaintenanceManager';
+import LicenseManager from './components/LicenseManager';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import { Usuario } from './types';
@@ -28,6 +30,7 @@ const App: React.FC = () => {
           <Route path="/tipos" element={<EquipmentTypes />} />
           <Route path="/usuarios" element={<UserManager />} />
           <Route path="/organizacion" element={<OrganizationManager />} />
+          <Route path="/licencias" element={<LicenseManager />} />
           <Route path="/reportes" element={<Reports />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

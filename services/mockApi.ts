@@ -1,5 +1,5 @@
 
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento } from '../types';
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia } from '../types';
 
 // --- Mock Data Initialization ---
 
@@ -63,6 +63,20 @@ let MOCK_MANTENIMIENTOS: RegistroMantenimiento[] = [
   { id: 3, equipo_id: 2, equipo_codigo: 'EQ-2021-045', equipo_modelo: 'HP ProBook 450', fecha: '2023-06-20', tipo_mantenimiento: 'Preventivo', proveedor: 'HP Service', costo: 45.00, descripcion: 'Mantenimiento anual de garantía.' }
 ];
 
+// --- Mock Data: Licenses ---
+let MOCK_TIPOS_LICENCIA: TipoLicencia[] = [
+  { id: 1, nombre: 'Office 365 Business', proveedor: 'Microsoft', descripcion: 'Licencia anual por usuario' },
+  { id: 2, nombre: 'Adobe Creative Cloud', proveedor: 'Adobe', descripcion: 'Suite completa de diseño' },
+  { id: 3, nombre: 'Antivirus ESET Endpoint', proveedor: 'ESET', descripcion: 'Protección de endpoint' },
+];
+
+let MOCK_LICENCIAS: Licencia[] = [
+  // Generate some initial data
+  { id: 1, tipo_id: 1, tipo_nombre: 'Office 365 Business', clave: 'KEY-OFFICE-001', fecha_compra: '2024-01-01', fecha_vencimiento: '2025-01-01', usuario_id: 3, usuario_nombre: 'Maria Ventas', usuario_departamento: 'Ventas' },
+  { id: 2, tipo_id: 1, tipo_nombre: 'Office 365 Business', clave: 'KEY-OFFICE-002', fecha_compra: '2024-01-01', fecha_vencimiento: '2025-01-01', usuario_id: 1, usuario_nombre: 'Admin Sistema', usuario_departamento: 'Tecnología (IT)' },
+  { id: 3, tipo_id: 1, tipo_nombre: 'Office 365 Business', clave: 'KEY-OFFICE-003', fecha_compra: '2024-01-01', fecha_vencimiento: '2025-01-01', usuario_id: null }, // Available
+  { id: 4, tipo_id: 2, tipo_nombre: 'Adobe Creative Cloud', clave: 'KEY-ADOBE-001', fecha_compra: '2023-06-01', fecha_vencimiento: '2024-06-01', usuario_id: null }, // Available
+];
 
 const MOCK_NOTIFICATIONS: Notificacion[] = [
   { id: 1, title: 'Garantía por vencer', mensaje: 'El equipo EQ-2021-045 vence su garantía en 15 días.', leido: false, fecha: '2024-05-20T10:00:00', tipo: 'warning' },
@@ -168,6 +182,17 @@ export const api = {
       const current = MOCK_USERS[index];
       const updated = { ...current, ...data };
       
+      // Logic for User Deactivation: Release Licenses
+      if (current.activo === true && data.activo === false) {
+         MOCK_LICENCIAS.forEach(l => {
+           if (l.usuario_id === id) {
+             l.usuario_id = null;
+             l.usuario_nombre = undefined;
+             l.usuario_departamento = undefined;
+           }
+         });
+      }
+
       // Recalculate derived fields if needed
       if (data.nombres || data.apellidos) {
         updated.nombre_completo = buildName(updated.nombres, updated.apellidos);
@@ -192,6 +217,16 @@ export const api = {
   
   deleteUsuario: async (id: number): Promise<void> => {
     await delay(400);
+    
+    // Release Licenses before deleting
+    MOCK_LICENCIAS.forEach(l => {
+      if (l.usuario_id === id) {
+        l.usuario_id = null;
+        l.usuario_nombre = undefined;
+        l.usuario_departamento = undefined;
+      }
+    });
+
     MOCK_USERS = MOCK_USERS.filter(u => u.id !== id);
   },
 
@@ -471,6 +506,84 @@ export const api = {
     return { ...equipo };
   },
 
+  // --- License Management ---
+
+  getTipoLicencias: async (): Promise<TipoLicencia[]> => {
+    await delay(300);
+    return [...MOCK_TIPOS_LICENCIA];
+  },
+
+  createTipoLicencia: async (data: Omit<TipoLicencia, 'id'>): Promise<TipoLicencia> => {
+    await delay(300);
+    const newType = { ...data, id: Math.floor(Math.random() * 10000) };
+    MOCK_TIPOS_LICENCIA.push(newType);
+    return newType;
+  },
+  
+  updateTipoLicencia: async (id: number, data: Partial<TipoLicencia>): Promise<TipoLicencia> => {
+    await delay(300);
+    MOCK_TIPOS_LICENCIA = MOCK_TIPOS_LICENCIA.map(t => t.id === id ? { ...t, ...data } : t);
+    return MOCK_TIPOS_LICENCIA.find(t => t.id === id)!;
+  },
+
+  deleteTipoLicencia: async (id: number): Promise<void> => {
+    await delay(300);
+    MOCK_TIPOS_LICENCIA = MOCK_TIPOS_LICENCIA.filter(t => t.id !== id);
+    // Also cascade delete licenses? Usually yes, or block. For mock, let's just filter
+    MOCK_LICENCIAS = MOCK_LICENCIAS.filter(l => l.tipo_id !== id);
+  },
+
+  getLicencias: async (): Promise<Licencia[]> => {
+    await delay(500);
+    return [...MOCK_LICENCIAS];
+  },
+
+  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string): Promise<void> => {
+    await delay(500);
+    const tipo = MOCK_TIPOS_LICENCIA.find(t => t.id === tipoId);
+    if (!tipo) throw new Error("Tipo de licencia no encontrado");
+
+    for (let i = 0; i < cantidad; i++) {
+      const id = Date.now() + i;
+      MOCK_LICENCIAS.push({
+        id,
+        tipo_id: tipo.id,
+        tipo_nombre: tipo.nombre,
+        clave: `${tipo.nombre.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 100000)}`,
+        fecha_compra: new Date().toISOString().split('T')[0],
+        fecha_vencimiento: fechaVencimiento,
+        usuario_id: null
+      });
+    }
+  },
+
+  asignarLicencia: async (licenciaId: number, usuarioId: number): Promise<Licencia> => {
+    await delay(400);
+    const licencia = MOCK_LICENCIAS.find(l => l.id === licenciaId);
+    const usuario = MOCK_USERS.find(u => u.id === usuarioId);
+    
+    if (!licencia || !usuario) throw new Error("Licencia o Usuario no válido");
+    if (licencia.usuario_id) throw new Error("Licencia ya asignada");
+
+    licencia.usuario_id = usuario.id;
+    licencia.usuario_nombre = usuario.nombre_completo;
+    licencia.usuario_departamento = usuario.departamento_nombre;
+    
+    return { ...licencia };
+  },
+
+  liberarLicencia: async (licenciaId: number): Promise<Licencia> => {
+    await delay(400);
+    const licencia = MOCK_LICENCIAS.find(l => l.id === licenciaId);
+    if (!licencia) throw new Error("Licencia no encontrada");
+
+    licencia.usuario_id = null;
+    licencia.usuario_nombre = undefined;
+    licencia.usuario_departamento = undefined;
+
+    return { ...licencia };
+  },
+
   // --- Stats & Reports ---
   getStats: async () => {
     await delay(600);
@@ -548,6 +661,29 @@ export const api = {
 
   getNotifications: async (): Promise<Notificacion[]> => {
     await delay(300);
-    return MOCK_NOTIFICATIONS;
+    const notifs = [...MOCK_NOTIFICATIONS];
+
+    // --- License Threshold Logic ---
+    // Calculate available percentage for each license type
+    MOCK_TIPOS_LICENCIA.forEach(tipo => {
+      const total = MOCK_LICENCIAS.filter(l => l.tipo_id === tipo.id).length;
+      if (total > 0) {
+        const available = MOCK_LICENCIAS.filter(l => l.tipo_id === tipo.id && !l.usuario_id).length;
+        const ratio = available / total;
+        
+        if (ratio <= 0.05) {
+          notifs.push({
+            id: Date.now() + tipo.id,
+            titulo: 'Stock de Licencias Crítico',
+            mensaje: `Quedan ${available} licencias disponibles de ${tipo.nombre} (${(ratio * 100).toFixed(1)}%). Se sugiere adquirir más.`,
+            leido: false,
+            fecha: new Date().toISOString(),
+            tipo: 'alert'
+          });
+        }
+      }
+    });
+
+    return notifs;
   }
 };
