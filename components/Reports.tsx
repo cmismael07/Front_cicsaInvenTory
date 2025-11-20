@@ -197,7 +197,73 @@ const Reports: React.FC = () => {
 
   const groupedLicenses = getGroupedLicenses(paginatedLicenses);
 
-  // --- Export Logic (CSV Fallback) ---
+  // --- Helper: Print Preview Window ---
+  const openPrintPreview = (data: any[], title: string) => {
+    if (data.length === 0) {
+      alert("No hay datos para generar la vista previa.");
+      return;
+    }
+
+    const headers = Object.keys(data[0]);
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+
+    if (!printWindow) {
+      alert("Por favor habilita las ventanas emergentes para ver el reporte.");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Vista Previa - ${title}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #334155; padding: 40px; }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+            .header-content h1 { margin: 0; color: #0f172a; font-size: 24px; margin-bottom: 4px; }
+            .header-content p { margin: 0; color: #64748b; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th { text-align: left; padding: 10px; background-color: #f1f5f9; color: #475569; border-bottom: 2px solid #cbd5e1; font-weight: 600; text-transform: uppercase; }
+            td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            tr:hover { background-color: #f1f5f9; }
+            .btn-print { padding: 10px 20px; background-color: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+            .btn-print:hover { background-color: #1d4ed8; }
+            @media print {
+              .btn-print { display: none; }
+              body { padding: 0; }
+              @page { margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="header-content">
+              <h1>Reporte: ${title.replace(/_/g, ' ')}</h1>
+              <p>Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</p>
+            </div>
+            <button class="btn-print" onclick="window.print()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Imprimir / Guardar PDF
+            </button>
+          </div>
+          <table>
+            <thead>
+              <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${data.map(row => `<tr>${headers.map(header => `<td>${row[header] ?? ''}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  // --- Export Logic ---
   const convertToCSV = (objArray: any[]) => {
     if (objArray.length === 0) return '';
     const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
@@ -214,7 +280,9 @@ const Reports: React.FC = () => {
             // Handle commas inside fields
             const val = array[i][index];
             const stringVal = val === null || val === undefined ? '' : val.toString();
-            line += `"${stringVal}"`;
+            // Escape quotes and handle commas
+            const escapedVal = stringVal.replace(/"/g, '""');
+            line += `"${escapedVal}"`;
         }
         str += line + '\r\n';
     }
@@ -237,28 +305,24 @@ const Reports: React.FC = () => {
       setIsExportMenuOpen(false);
       const timestamp = new Date().toISOString().split('T')[0];
 
-      if (format === 'pdf') {
-          alert("Preparando vista de impresión para PDF. Por favor, seleccione 'Guardar como PDF' en el diálogo de impresión.");
-          window.print();
-          return;
-      }
-
-      // Export Data Preparation
+      // 1. Prepare Data based on Active Tab and Filters
       let dataToExport: any[] = [];
-      let filename = `reporte_${activeTab.toLowerCase()}_${timestamp}`;
+      let reportTitle = '';
 
       switch (activeTab) {
           case 'REPLACEMENT':
+              reportTitle = 'Candidatos_Reemplazo';
               dataToExport = candidates.map(c => ({
                   Codigo: c.codigo_activo,
                   Marca: c.marca,
                   Modelo: c.modelo,
-                  FechaCompra: c.fecha_compra,
+                  'Fecha Compra': c.fecha_compra,
                   Antiguedad: `${calculateAge(c.fecha_compra)} Años`,
                   Observaciones: c.observaciones
               }));
               break;
           case 'HISTORY':
+              reportTitle = 'Historial_Movimientos';
               dataToExport = historial.map(h => ({
                   Fecha: h.fecha,
                   Equipo: h.equipo_codigo,
@@ -268,28 +332,31 @@ const Reports: React.FC = () => {
               }));
               break;
           case 'ASSIGNMENTS':
+              reportTitle = 'Historial_Asignaciones';
               dataToExport = filteredAssignmentsList.map(a => ({
                   Usuario: a.usuario_nombre,
                   Departamento: a.usuario_departamento,
                   Equipo: a.equipo_codigo,
                   Modelo: a.equipo_modelo,
-                  FechaInicio: a.fecha_inicio,
-                  FechaFin: a.fecha_fin || 'Vigente',
+                  'Fecha Inicio': a.fecha_inicio,
+                  'Fecha Fin': a.fecha_fin || 'Vigente',
                   Ubicacion: a.ubicacion
               }));
               break;
           case 'MAINTENANCE':
+              reportTitle = 'Historial_Mantenimientos';
               dataToExport = mantenimientos.map(m => ({
                   Fecha: m.fecha,
                   Equipo: m.equipo_codigo,
                   Modelo: m.equipo_modelo,
                   Tipo: m.tipo_mantenimiento,
                   Proveedor: m.proveedor,
-                  Costo: m.costo,
+                  Costo: formatCurrency(m.costo),
                   Descripcion: m.descripcion
               }));
               break;
           case 'LICENSES':
+              reportTitle = 'Reporte_Licencias';
               dataToExport = filteredLicensesList.map(l => ({
                   Licencia: l.tipo_nombre,
                   Clave: l.clave,
@@ -300,10 +367,17 @@ const Reports: React.FC = () => {
               break;
       }
 
-      if (dataToExport.length > 0) {
-          downloadCSV(dataToExport, filename);
-      } else {
+      if (dataToExport.length === 0) {
           alert("No hay datos para exportar con los filtros actuales.");
+          return;
+      }
+
+      // 2. Handle Output Format
+      if (format === 'pdf') {
+          openPrintPreview(dataToExport, reportTitle);
+      } else {
+          const filename = `${reportTitle}_${timestamp}`;
+          downloadCSV(dataToExport, filename);
       }
   };
 
@@ -335,7 +409,7 @@ const Reports: React.FC = () => {
                         onClick={() => handleExport('pdf')}
                         className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-red-50 flex items-center gap-2 hover:text-red-700"
                     >
-                        <FileText className="w-4 h-4" /> PDF
+                        <FileText className="w-4 h-4" /> Vista Previa / PDF
                     </button>
                 </div>
             )}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
 import { Usuario, Departamento, Puesto, RolUsuario } from '../types';
-import { UserPlus, Edit, Trash2, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Edit, Trash2, X, Save, ChevronLeft, ChevronRight, UserX } from 'lucide-react';
 
 const UserManager: React.FC = () => {
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -79,10 +79,27 @@ const UserManager: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Eliminar usuario?')) {
-      await api.deleteUsuario(id);
-      loadData();
+  const handleDelete = async (user: Usuario) => {
+    if (user.activo) {
+      // Si está activo, lo desactivamos (Requerimiento del usuario)
+      if (window.confirm(`¿Deseas desactivar al usuario "${user.nombre_usuario}"?\n\nEsta acción:\n- Cambiará su estado a Inactivo.\n- Liberará las licencias asignadas automáticamente.`)) {
+        try {
+          await api.updateUsuario(user.id, { activo: false });
+          loadData();
+        } catch (error: any) {
+          alert('Error al desactivar: ' + error.message);
+        }
+      }
+    } else {
+      // Si ya está inactivo, permitimos borrarlo definitivamente
+      if (window.confirm(`¿Eliminar permanentemente al usuario "${user.nombre_usuario}"? Esta acción no se puede deshacer.`)) {
+        try {
+          await api.deleteUsuario(user.id);
+          loadData();
+        } catch (error: any) {
+          alert('Error al eliminar: ' + error.message);
+        }
+      }
     }
   };
 
@@ -133,8 +150,14 @@ const UserManager: React.FC = () => {
                                         }
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleOpenModal(u)} className="text-blue-600 hover:text-blue-900 mr-3"><Edit className="w-4 h-4" /></button>
-                                        <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:text-red-900"><Trash2 className="w-4 h-4" /></button>
+                                        <button onClick={() => handleOpenModal(u)} className="text-blue-600 hover:text-blue-900 mr-3" title="Editar"><Edit className="w-4 h-4" /></button>
+                                        <button 
+                                          onClick={() => handleDelete(u)} 
+                                          className={`${u.activo ? 'text-amber-600 hover:text-amber-900' : 'text-red-600 hover:text-red-900'}`}
+                                          title={u.activo ? "Desactivar Usuario" : "Eliminar Permanentemente"}
+                                        >
+                                          {u.activo ? <UserX className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
