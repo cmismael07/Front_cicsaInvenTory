@@ -364,11 +364,20 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                                     <option value={RolUsuario.ADMIN}>{RolUsuario.ADMIN}</option>
                                 </select>
                             </div>
-                            <div className="flex items-center pt-6">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={formData.activo !== false} onChange={e => setFormData({...formData, activo: e.target.checked})} />
+                            <div className="pt-6">
+                                <label className={`flex items-center gap-2 ${editingId === currentUser?.id ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 text-blue-600 rounded" 
+                                        checked={formData.activo !== false} 
+                                        onChange={e => setFormData({...formData, activo: e.target.checked})} 
+                                        disabled={editingId === currentUser?.id}
+                                    />
                                     <span className="text-sm font-medium text-slate-700">Usuario Activo</span>
                                 </label>
+                                {editingId === currentUser?.id && (
+                                    <p className="text-xs text-amber-600 mt-1">No puedes desactivar tu propio usuario.</p>
+                                )}
                             </div>
                         </div>
 
