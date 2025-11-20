@@ -2,9 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
 import { Usuario, Departamento, Puesto, RolUsuario } from '../types';
-import { UserPlus, Edit, Trash2, X, Save, ChevronLeft, ChevronRight, UserX } from 'lucide-react';
+import { UserPlus, Edit, X, Save, ChevronLeft, ChevronRight, UserX, AlertTriangle } from 'lucide-react';
 
-const UserManager: React.FC = () => {
+interface UserManagerProps {
+  currentUser: Usuario | null;
+}
+
+const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
   const [users, setUsers] = useState<Usuario[]>([]);
   const [depts, setDepts] = useState<Departamento[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
@@ -14,10 +18,14 @@ const UserManager: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  // Modal State
+  // Edit/Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<Usuario>>({});
+
+  // Deactivate Confirmation Modal State
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<Usuario | null>(null);
 
   useEffect(() => {
     loadData();
@@ -25,15 +33,20 @@ const UserManager: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [u, d, p] = await Promise.all([
-      api.getUsuarios(),
-      api.getDepartamentos(),
-      api.getPuestos()
-    ]);
-    setUsers(u);
-    setDepts(d);
-    setPuestos(p);
-    setLoading(false);
+    try {
+      const [u, d, p] = await Promise.all([
+        api.getUsuarios(),
+        api.getDepartamentos(),
+        api.getPuestos()
+      ]);
+      setUsers(u);
+      setDepts(d);
+      setPuestos(p);
+    } catch (error) {
+      console.error("Error loading data", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Pagination Logic
@@ -46,7 +59,7 @@ const UserManager: React.FC = () => {
   const handleOpenModal = (user?: Usuario) => {
     if (user) {
       setEditingId(user.id);
-      setFormData({ ...user, password: '' }); // Don't show existing password, empty means no change
+      setFormData({ ...user, password: '' }); // Don't show existing password
     } else {
       setEditingId(null);
       setFormData({
@@ -60,7 +73,6 @@ const UserManager: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // If editing and password is empty, remove it so it doesn't overwrite with empty string
       const dataToSend = { ...formData };
       if (editingId && !dataToSend.password) {
         delete dataToSend.password;
@@ -79,32 +91,46 @@ const UserManager: React.FC = () => {
     }
   };
 
-  const handleDelete = async (user: Usuario) => {
-    if (user.activo) {
-      // Si está activo, lo desactivamos (Requerimiento del usuario)
-      if (window.confirm(`¿Deseas desactivar al usuario "${user.nombre_usuario}"?\n\nEsta acción:\n- Cambiará su estado a Inactivo.\n- Liberará las licencias asignadas automáticamente.`)) {
-        try {
-          await api.updateUsuario(user.id, { activo: false });
-          loadData();
-        } catch (error: any) {
-          alert('Error al desactivar: ' + error.message);
-        }
-      }
-    } else {
-      // Si ya está inactivo, permitimos borrarlo definitivamente
-      if (window.confirm(`¿Eliminar permanentemente al usuario "${user.nombre_usuario}"? Esta acción no se puede deshacer.`)) {
-        try {
-          await api.deleteUsuario(user.id);
-          loadData();
-        } catch (error: any) {
-          alert('Error al eliminar: ' + error.message);
-        }
-      }
+  const handleStatusAction = async (user: Usuario) => {
+    // Validation 1: Prevent self-deactivation
+    if (currentUser && currentUser.id === user.id) {
+      alert("No puedes desactivar tu propio usuario mientras estás conectado.");
+      return;
+    }
+
+    // Validation 2: If already inactive, do nothing (button should be disabled, but double check)
+    if (!user.activo) {
+      return;
+    }
+
+    // Proceed to Deactivation Modal
+    setUserToDeactivate(user);
+    setIsDeactivateModalOpen(true);
+  };
+
+  const handleConfirmDeactivation = async () => {
+    if (!userToDeactivate) return;
+    
+    try {
+      // Close modal immediately
+      setIsDeactivateModalOpen(false);
+      setLoading(true);
+      
+      // Perform update on API
+      await api.updateUsuario(userToDeactivate.id, { activo: false });
+      
+      // Reload data to reflect changes
+      await loadData();
+      setUserToDeactivate(null);
+    } catch (error: any) {
+      setLoading(false);
+      alert('Error al desactivar: ' + error.message);
     }
   };
 
   return (
     <div className="space-y-6">
+        {/* Header and Add Button */}
         <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-slate-800">Administración de Usuarios</h2>
             <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
@@ -131,7 +157,12 @@ const UserManager: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                            {paginatedUsers.map(u => (
+                            {paginatedUsers.map(u => {
+                                const isSelf = currentUser?.id === u.id;
+                                const isInactive = !u.activo;
+                                const isDisabled = isSelf || isInactive;
+
+                                return (
                                 <tr key={u.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="font-medium text-slate-900">{u.nombre_usuario}</div>
@@ -150,17 +181,30 @@ const UserManager: React.FC = () => {
                                         }
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleOpenModal(u)} className="text-blue-600 hover:text-blue-900 mr-3" title="Editar"><Edit className="w-4 h-4" /></button>
                                         <button 
-                                          onClick={() => handleDelete(u)} 
-                                          className={`${u.activo ? 'text-amber-600 hover:text-amber-900' : 'text-red-600 hover:text-red-900'}`}
-                                          title={u.activo ? "Desactivar Usuario" : "Eliminar Permanentemente"}
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); handleOpenModal(u); }} 
+                                            className="text-blue-600 hover:text-blue-900 mr-3" 
+                                            title="Editar"
                                         >
-                                          {u.activo ? <UserX className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleStatusAction(u);
+                                          }}
+                                          disabled={isDisabled}
+                                          className={`${!isDisabled ? 'text-amber-600 hover:text-amber-900 cursor-pointer' : 'text-slate-300 cursor-not-allowed'}`}
+                                          title={isSelf ? "No puedes desactivar tu propio usuario" : (isInactive ? "Usuario ya inactivo" : "Desactivar Usuario")}
+                                        >
+                                          <UserX className="w-4 h-4" />
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                             {users.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No se encontraron usuarios.</td>
@@ -216,7 +260,44 @@ const UserManager: React.FC = () => {
             )}
         </div>
 
-        {/* Modal Form */}
+        {/* Deactivate Confirmation Modal */}
+        {isDeactivateModalOpen && userToDeactivate && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsDeactivateModalOpen(false)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 bg-amber-100 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800">Inactivar Usuario</h3>
+                  <p className="text-slate-600 text-sm mt-2">
+                    ¿Realmente desea inactivar al usuario <span className="font-semibold text-slate-900">{userToDeactivate.nombre_usuario}</span>?
+                  </p>
+                  <p className="text-slate-500 text-xs mt-2">
+                    El usuario perderá acceso al sistema y se liberarán sus licencias asignadas. El historial se conservará.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button 
+                  onClick={() => setIsDeactivateModalOpen(false)} 
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleConfirmDeactivation} 
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <UserX className="w-4 h-4" /> Sí, Inactivar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit/Create Modal Form */}
         {isModalOpen && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsModalOpen(false)}>
                 <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
