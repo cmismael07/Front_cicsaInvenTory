@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
 import { Equipo, EstadoEquipo, TipoEquipo, Usuario, Departamento } from '../types';
-import { Search, Filter, Plus, MoreVertical, Edit, UserCheck, RotateCcw, Trash2, X, Save, Wrench } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, Edit, UserCheck, RotateCcw, Trash2, X, Save, Wrench, Archive } from 'lucide-react';
 
-type ModalAction = 'CREATE' | 'EDIT' | 'ASSIGN' | 'RETURN' | 'BAJA' | 'TO_MAINTENANCE' | null;
+type ModalAction = 'CREATE' | 'EDIT' | 'ASSIGN' | 'RETURN' | 'BAJA' | 'TO_MAINTENANCE' | 'MARK_DISPOSAL' | null;
 
 const EquipmentList: React.FC = () => {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
@@ -68,6 +68,7 @@ const EquipmentList: React.FC = () => {
       case EstadoEquipo.DISPONIBLE: return 'bg-blue-100 text-blue-800';
       case EstadoEquipo.EN_MANTENIMIENTO: return 'bg-amber-100 text-amber-800';
       case EstadoEquipo.BAJA: return 'bg-red-100 text-red-800';
+      case EstadoEquipo.PARA_BAJA: return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -76,12 +77,216 @@ const EquipmentList: React.FC = () => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   };
 
+  // Document Generation Logic
+  const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => {
+    const printWindow = window.open('', '_blank', 'width=900,height=800');
+    if (!printWindow) {
+      alert('Por favor permita ventanas emergentes para ver el reporte.');
+      return;
+    }
+
+    const today = new Date();
+    const fechaAsignacion = `${today.getDate()} de ${today.toLocaleString('es-ES', { month: 'long' })} del ${today.getFullYear()}`;
+    const fechaCorta = today.toLocaleDateString('es-ES'); // DD/MM/YYYY
+
+    // Variables for logic
+    const serieCargador = equipo.serie_cargador || 'N/A';
+    const observacionesEquipo = equipo.observaciones || 'Sin observaciones';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Documentos de Asignación</title>
+          <style>
+            @page { size: A4 portrait; margin: 1.5cm; }
+            body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.3; color: #000; margin: 0; }
+            
+            /* General Helper Classes */
+            .page-break { page-break-after: always; }
+            .text-center { text-align: center; }
+            .text-justify { text-align: justify; }
+            .text-bold { font-weight: bold; }
+            .mb-2 { margin-bottom: 10px; }
+            .mb-4 { margin-bottom: 20px; }
+            .mt-4 { margin-top: 20px; }
+            
+            /* --- ANEXO 1 STYLES --- */
+            .anexo-container { padding: 10px; }
+            .anexo-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+            .logo-img { max-height: 60px; width: auto; } 
+            .anexo-label { font-weight: bold; font-size: 10pt; margin-top: 10px; text-align: right;}
+            .anexo-title { text-align: center; font-weight: bold; text-decoration: underline; margin: 20px 0; font-size: 11pt; text-transform: uppercase; }
+            .anexo-footer { margin-top: 60px; }
+            .signature-line { border-top: 1px solid #000; width: 250px; padding-top: 5px; font-weight: bold; margin-bottom: 5px;}
+
+            /* --- CARTA RESPONSIVA STYLES --- */
+            .responsiva-container { padding: 10px; }
+            
+            /* Header Table */
+            table.header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            table.header-table td { border: 1px solid #000; padding: 5px; text-align: center; vertical-align: middle; }
+            .header-logo-cell { width: 20%; }
+            .header-title-cell { width: 50%; font-weight: bold; font-size: 11pt; }
+            .header-info-cell { width: 30%; font-size: 9pt; text-align: left; }
+
+            /* Equipment Table */
+            table.eq-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 9pt; }
+            table.eq-table th { border: 1px solid #000; background-color: #f0f0f0; padding: 5px; font-weight: bold; text-align: center; }
+            table.eq-table td { border: 1px solid #000; padding: 5px; text-align: center; vertical-align: top; }
+
+            .responsiva-section-title { font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+            ul.responsiva-list { padding-left: 20px; margin: 5px 0 15px 0; }
+            ul.responsiva-list li { margin-bottom: 4px; text-align: justify; }
+
+            .footer-note { font-size: 8pt; text-align: center; margin-top: 40px; font-style: italic; }
+          </style>
+        </head>
+        <body>
+          
+          <!-- ================= PAGE 1: ANEXO 1 ================= -->
+          <div class="anexo-container">
+            <div class="anexo-header">
+              <img src="/logoAnexoCarso.png" class="logo-img" alt="Logo" onerror="this.style.display='none'; document.body.insertAdjacentHTML('afterbegin', '<p style=\'color:red\'>Error: logoAnexoCarso.png no encontrado</p>');" />
+              <div class="anexo-label">Anexo 1</div>
+            </div>
+
+            <div class="anexo-title">
+              CARTA DE NO INCLUSION DE SOFTWARE<br>
+              DECLARACION DEL EMPLEADO
+            </div>
+
+            <div class="mb-4">
+              Guayaquil., ${fechaAsignacion}
+            </div>
+
+            <div class="mb-4 text-bold">
+              Sr./ Sra./ Srita.: ${usuario.nombre_completo}
+            </div>
+
+            <div class="text-justify">
+              <p>PRESENTE.</p>
+              <p>Con motivo de los conocimientos de que usted dispone en materia de uso de equipo y programas de cómputo y en virtud de que esta empresa posee su propio equipo y frecuentemente adquiere ó desarrolla programas y material diverso de cómputo, a los cuales usted tiene ó puede llegar a tener acceso en el desempeño de sus funciones dentro de la empresa, hacemos de su conocimiento lo siguiente:</p>
+              <p>1. Las leyes de la materia y los tratados internacionales prohíben el uso de los programas de cómputo y de cualquier información al respecto, sin el consentimiento de su legítimo propietario ó licenciatario.</p>
+              <p>2. Lo anterior implica que usted deberá utilizar única y exclusivamente los equipos y programas de cómputo que la empresa proporcione para el desempeño de sus funciones dentro de la misma empresa.</p>
+              <p>3. En consecuencia, deberá usted abstenerse de utilizar y/o ingresar a las instalaciones y/o equipo de cómputo de la empresa programas de cómputo propiedad de terceros que no hayan sido adquiridos por la empresa, así como copiar al equipo de cómputo de la Empresa, archivos no utilizables en el desempeño de sus funciones, por ejemplo: protectores de pantalla, mp3, videojuegos, fotografías, etc.</p>
+              <p>4. Asimismo, deberá usted abstenerse de copiar y sustraer cualquier programa adquirido ó desarrollado por la empresa, ya que estos son propiedad exclusiva de la misma.</p>
+              <p>5.- Deberá mantener estricta confidencialidad de la información de la Empresa que en el desempeño de sus funciones conozca y en ningún caso y bajo ningún concepto podrá usted divulgarla.</p>
+              <p>6. Igualmente, le está prohibido permitir que terceras personas realicen las conductas anteriores ó tengan acceso, de cualquier manera, al equipo de programas de propiedad de la empresa.</p>
+              <p>7. La contravención de estas disposiciones será causa de rescisión al contrato de trabajo celebrado entre la empresa y usted, sin que tal medida le exonere de la responsabilidad personal en que llegará a incurrir de acuerdo con las leyes y tratados internacionales aplicables.</p>
+            </div>
+
+            <div class="anexo-footer">
+              <div class="signature-line">Nombre y Firma de Conformidad</div>
+              <div>${usuario.nombre_completo}</div>
+              <div>${usuario.departamento_nombre || 'Departamento no asignado'}</div>
+            </div>
+          </div>
+
+          <div class="page-break"></div>
+
+          <!-- ================= PAGE 2: CARTA RESPONSIVA ================= -->
+          <div class="responsiva-container">
+            
+            <!-- Header Table -->
+            <table class="header-table">
+              <tr>
+                <td class="header-logo-cell">
+                   <img src="/logoAnexoCarso.png" style="max-width:100px; max-height:50px;" alt="Logo" />
+                </td>
+                <td class="header-title-cell">
+                  SISTEMA DE GESTIÓN<br>
+                  PROCISA ECUADOR S.A<br><br>
+                  <span style="font-weight:normal; font-size:10pt;">FORMATO PARA CARTA RESPONSIVA DE EQUIPO</span>
+                </td>
+                <td class="header-info-cell">
+                  <strong>Código:</strong> FR-SI-12<br>
+                  <strong>Fecha de Emisión:</strong> ${fechaCorta}<br>
+                  <strong>Página 1 de 1</strong>
+                </td>
+              </tr>
+            </table>
+
+            <p class="text-justify mb-4" style="font-size: 9pt;">
+              Recibí el siguiente equipo de cómputo propiedad de PROCISA ECUADOR S.A. para su uso durante la jornada laboral y actividades competentes a mi trabajo, dentro y fuera de las instalaciones de la empresa.
+            </p>
+
+            <!-- Equipment Details Table -->
+            <table class="eq-table">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Descripción</th>
+                  <th>No. De Serie</th>
+                  <th>Cargador</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${equipo.tipo_nombre}</td>
+                  <td>
+                    ${equipo.marca} ${equipo.modelo}<br>
+                    <span style="font-size:8pt; color:#333;">${observacionesEquipo}</span>
+                  </td>
+                  <td>${equipo.numero_serie}</td>
+                  <td>${serieCargador}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="mb-4" style="font-size: 9pt;">
+              Con la presente el usuario: <strong>${usuario.nombre_completo}</strong> con No. de empleado: <strong>${usuario.numero_empleado || 'S/N'}</strong><br>
+              Perteneciente al área de: <strong>${usuario.departamento_nombre || 'General'}</strong> se responsabiliza de su correcto uso y cuidado. Además de aplicar las siguientes recomendaciones:
+            </div>
+
+            <div class="responsiva-section-title">Para equipos de cómputo</div>
+            <ul class="responsiva-list">
+              <li>Cuidar el uso del equipo en lugares públicos, bloqueando la sesión cuando esté desatendido.</li>
+              <li>Antes de ingresar a un dispositivo de almacenamiento deberá ser analizado por el antivirus, el cual en ningún caso se podrá desactivar.</li>
+              <li>Se deberá utilizar ONEDRIVE para respaldar la información.</li>
+              <li>Se deberá minimizar la conexión en redes públicas o inseguras.</li>
+              <li>El equipo conferido debe ser cuidado de cualquier daño físico, lógico y/o extravío.</li>
+              <li>Está prohibida la instalación de cualquier software gratuito o de origen desconocido.</li>
+              <li>La información que sea procesada en el equipo deberá estar exclusivamente relacionada con las actividades conferidas y podrá ser sujeta de auditoría en cualquier momento.</li>
+              <li>Será necesario que el mantenimiento del equipo sea solicitado al área de Tecnología.</li>
+            </ul>
+
+            <div class="responsiva-section-title">Otros activos</div>
+            <ul class="responsiva-list">
+              <li>Cuidar el uso del activo en lugares públicos.</li>
+              <li>El activo conferido debe ser cuidado de cualquier daño físico, lógico y/o extravío.</li>
+              <li>En el caso de activos que procesen o almacenen información deberá estar exclusivamente relacionada con las actividades conferidas y podrá ser sujeta de auditoría en cualquier momento.</li>
+            </ul>
+
+            <div class="anexo-footer">
+               <div style="border-top: 1px solid #000; width: 250px; padding-top: 5px; margin-top:40px;"></div>
+               <div class="text-bold">${usuario.nombre_completo}</div>
+               <div>${usuario.departamento_nombre || ''}</div>
+            </div>
+
+            <div class="footer-note">
+              COPIA NO CONTROLADA UNA VEZ IMPRESA
+            </div>
+
+          </div>
+
+          <script>
+             window.onload = function() { setTimeout(function(){ window.print(); }, 800); }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   // Action Handlers
   const openModal = (action: ModalAction, equipo: Equipo | null = null) => {
     // Validation: Strict check for Assignment
     if (action === 'ASSIGN' && equipo) {
-      if (equipo.estado !== EstadoEquipo.DISPONIBLE) {
-        alert("Solo se pueden asignar equipos que se encuentren en estado 'Disponible'.");
+      // Allow assignment if Available OR Pre-Disposal (Para Baja)
+      if (equipo.estado !== EstadoEquipo.DISPONIBLE && equipo.estado !== EstadoEquipo.PARA_BAJA) {
+        alert("Solo se pueden asignar equipos que se encuentren en estado 'Disponible' o 'Para Baja'.");
         return;
       }
     }
@@ -94,7 +299,8 @@ const EquipmentList: React.FC = () => {
     if (action === 'CREATE') {
       setFormData({
         codigo_activo: '', numero_serie: '', marca: '', modelo: '', 
-        tipo_equipo_id: tipos[0]?.id || '', fecha_compra: new Date().toISOString().split('T')[0], 
+        tipo_equipo_id: tipos[0]?.id || '', serie_cargador: '', 
+        fecha_compra: new Date().toISOString().split('T')[0], 
         valor_compra: 0, anos_garantia: 1, estado: EstadoEquipo.DISPONIBLE, observaciones: '',
         ubicacion_id: bodegas.length > 0 ? bodegas[0].id : ''
       });
@@ -102,7 +308,10 @@ const EquipmentList: React.FC = () => {
       setFormData({ ...equipo });
     } else if (action === 'ASSIGN') {
       setFormData({ usuario_id: usuarios[0]?.id || '', ubicacion: '', observaciones: '' });
-    } else if (action === 'RETURN' || action === 'BAJA' || action === 'TO_MAINTENANCE') {
+    } else if (action === 'RETURN' || action === 'MARK_DISPOSAL') {
+      // Initialize with first warehouse if available
+      setFormData({ observaciones: '', ubicacion_id: bodegas.length > 0 ? bodegas[0].id : '' });
+    } else if (action === 'BAJA' || action === 'TO_MAINTENANCE') {
       setFormData({ observaciones: '' });
     }
   };
@@ -128,8 +337,23 @@ const EquipmentList: React.FC = () => {
       } else if (modalAction === 'ASSIGN' && selectedEquipo) {
         // Backend double-check simulated
         await api.asignarEquipo(selectedEquipo.id, formData.usuario_id, formData.ubicacion, formData.observaciones);
+        
+        // Generate Assignment Reports (Anexo 1 & Responsiva)
+        const assignedUser = usuarios.find(u => u.id === Number(formData.usuario_id));
+        if (assignedUser) {
+           generateAssignmentDocument(assignedUser, selectedEquipo);
+        }
+
       } else if (modalAction === 'RETURN' && selectedEquipo) {
-        await api.recepcionarEquipo(selectedEquipo.id, formData.observaciones);
+        // Resolve location name from ID
+        const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+        const nombreBodega = bodega ? bodega.nombre : 'Bodega General';
+        await api.recepcionarEquipo(selectedEquipo.id, formData.observaciones, Number(formData.ubicacion_id), nombreBodega);
+      } else if (modalAction === 'MARK_DISPOSAL' && selectedEquipo) {
+         // Resolve location name from ID
+         const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+         const nombreBodega = bodega ? bodega.nombre : 'Bodega IT';
+         await api.marcarParaBaja(selectedEquipo.id, formData.observaciones, Number(formData.ubicacion_id), nombreBodega);
       } else if (modalAction === 'BAJA' && selectedEquipo) {
         await api.bajaEquipo(selectedEquipo.id, formData.observaciones);
       } else if (modalAction === 'TO_MAINTENANCE' && selectedEquipo) {
@@ -181,6 +405,7 @@ const EquipmentList: React.FC = () => {
             <option value={EstadoEquipo.ACTIVO}>{EstadoEquipo.ACTIVO}</option>
             <option value={EstadoEquipo.DISPONIBLE}>{EstadoEquipo.DISPONIBLE}</option>
             <option value={EstadoEquipo.EN_MANTENIMIENTO}>{EstadoEquipo.EN_MANTENIMIENTO}</option>
+            <option value={EstadoEquipo.PARA_BAJA}>{EstadoEquipo.PARA_BAJA}</option>
             <option value={EstadoEquipo.BAJA}>{EstadoEquipo.BAJA}</option>
           </select>
         </div>
@@ -243,7 +468,7 @@ const EquipmentList: React.FC = () => {
                         <button onClick={() => openModal('EDIT', equipo)} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                           <Edit className="w-4 h-4" /> Editar
                         </button>
-                        {equipo.estado === EstadoEquipo.DISPONIBLE && (
+                        {(equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.PARA_BAJA) && (
                            <button onClick={() => openModal('ASSIGN', equipo)} className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2">
                              <UserCheck className="w-4 h-4" /> Asignar
                            </button>
@@ -254,11 +479,19 @@ const EquipmentList: React.FC = () => {
                            </button>
                         )}
                         {/* Allow sending to Maintenance if available or active (will be unassigned) */}
-                        {(equipo.estado === EstadoEquipo.ACTIVO || equipo.estado === EstadoEquipo.DISPONIBLE) && (
+                        {(equipo.estado === EstadoEquipo.ACTIVO || equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.PARA_BAJA) && (
                           <button onClick={() => openModal('TO_MAINTENANCE', equipo)} className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2">
                             <Wrench className="w-4 h-4" /> Mantenimiento
                           </button>
                         )}
+                        
+                        {/* Mark for Disposal - Available if not already Baja or Para Baja */}
+                        {(equipo.estado !== EstadoEquipo.BAJA && equipo.estado !== EstadoEquipo.PARA_BAJA) && (
+                          <button onClick={() => openModal('MARK_DISPOSAL', equipo)} className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2">
+                            <Archive className="w-4 h-4" /> Enviar a Pre-Baja
+                          </button>
+                        )}
+
                         {equipo.estado !== EstadoEquipo.BAJA && (
                           <button onClick={() => openModal('BAJA', equipo)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                             <Trash2 className="w-4 h-4" /> Dar de Baja
@@ -299,6 +532,7 @@ const EquipmentList: React.FC = () => {
                 {modalAction === 'RETURN' && 'Recepcionar Equipo'}
                 {modalAction === 'BAJA' && 'Dar de Baja Equipo'}
                 {modalAction === 'TO_MAINTENANCE' && 'Enviar a Mantenimiento'}
+                {modalAction === 'MARK_DISPOSAL' && 'Enviar a Pre-Baja (Bodega)'}
               </h3>
               <button onClick={() => setModalAction(null)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-6 h-6" />
@@ -361,6 +595,26 @@ const EquipmentList: React.FC = () => {
                      )}
                   </div>
 
+                  {/* Charger Serial for Laptops */}
+                  {(() => {
+                    const selectedType = tipos.find(t => t.id === Number(formData.tipo_equipo_id));
+                    if (selectedType?.nombre.toLowerCase().includes('laptop')) {
+                      return (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Serie del Cargador</label>
+                          <input 
+                            type="text" 
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                            value={formData.serie_cargador || ''} 
+                            onChange={e => setFormData({...formData, serie_cargador: e.target.value})} 
+                            placeholder="S/N Cargador"
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Compra</label>
@@ -409,24 +663,87 @@ const EquipmentList: React.FC = () => {
                 </>
               )}
 
-              {/* RETURN / BAJA / TO_MAINTENANCE Fields */}
-              {(modalAction === 'RETURN' || modalAction === 'BAJA' || modalAction === 'TO_MAINTENANCE') && (
+              {/* RETURN Fields */}
+              {modalAction === 'RETURN' && (
                 <>
                   <p className="text-sm text-slate-500 mb-4">
-                    {modalAction === 'RETURN' && `Devolviendo equipo ${selectedEquipo?.codigo_activo} a Bodega.`}
+                    Devolviendo equipo <b>{selectedEquipo?.codigo_activo}</b> a Bodega.
+                  </p>
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación de Recepción (Bodega)</label>
+                      <select 
+                          required
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                          value={formData.ubicacion_id || ''} 
+                          onChange={e => setFormData({...formData, ubicacion_id: Number(e.target.value)})}
+                      >
+                          {bodegas.length === 0 && <option value="">Sin bodegas definidas</option>}
+                          {bodegas.map(b => (
+                              <option key={b.id} value={b.id}>{b.nombre}</option>
+                          ))}
+                      </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Observaciones de reingreso
+                    </label>
+                    <textarea required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+                      value={formData.observaciones || ''} onChange={e => setFormData({...formData, observaciones: e.target.value})} 
+                      placeholder='Estado físico, accesorios devueltos...' />
+                  </div>
+                </>
+              )}
+
+              {/* MARK FOR DISPOSAL Fields (PRE_BAJA) */}
+              {modalAction === 'MARK_DISPOSAL' && (
+                <>
+                  <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg mb-4">
+                     <p className="text-sm text-orange-800">
+                        El equipo <b>{selectedEquipo?.codigo_activo}</b> pasará a estado <b>Pre-Baja</b>. 
+                        Debe seleccionar la bodega donde permanecerá hasta su disposición final.
+                     </p>
+                  </div>
+
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación (Bodega IT)</label>
+                      <select 
+                          required
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                          value={formData.ubicacion_id || ''} 
+                          onChange={e => setFormData({...formData, ubicacion_id: Number(e.target.value)})}
+                      >
+                          {bodegas.length === 0 && <option value="">Sin bodegas definidas</option>}
+                          {bodegas.map(b => (
+                              <option key={b.id} value={b.id}>{b.nombre}</option>
+                          ))}
+                      </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Observaciones / Motivo
+                    </label>
+                    <textarea required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+                      value={formData.observaciones || ''} onChange={e => setFormData({...formData, observaciones: e.target.value})} 
+                      placeholder='Describa el motivo (obsoleto, dañado irrep.) y ubicación en estantería...' />
+                  </div>
+                </>
+              )}
+
+              {/* BAJA / TO_MAINTENANCE Fields */}
+              {(modalAction === 'BAJA' || modalAction === 'TO_MAINTENANCE') && (
+                <>
+                  <p className="text-sm text-slate-500 mb-4">
                     {modalAction === 'BAJA' && `Dando de baja definitiva al equipo ${selectedEquipo?.codigo_activo}.`}
                     {modalAction === 'TO_MAINTENANCE' && `Enviando equipo ${selectedEquipo?.codigo_activo} a mantenimiento.`}
                   </p>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      {modalAction === 'RETURN' && 'Observaciones de reingreso'}
                       {modalAction === 'BAJA' && 'Motivo de Baja'}
                       {modalAction === 'TO_MAINTENANCE' && 'Falla reportada / Motivo'}
                     </label>
                     <textarea required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
                       value={formData.observaciones || ''} onChange={e => setFormData({...formData, observaciones: e.target.value})} 
                       placeholder={
-                        modalAction === 'RETURN' ? 'Estado físico, accesorios devueltos...' : 
                         modalAction === 'BAJA' ? 'Razon de baja, destino final...' :
                         'Describa el problema técnico...'
                       } />

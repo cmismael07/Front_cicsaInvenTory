@@ -157,9 +157,9 @@ export const liveApi = {
     });
     return handleResponse(response);
   },
-  recepcionarEquipo: async (id: number, observaciones: string): Promise<Equipo> => {
+  recepcionarEquipo: async (id: number, observaciones: string, ubicacionId?: number, ubicacionNombre?: string): Promise<Equipo> => {
     const response = await fetch(`${API_URL}/equipos/${id}/recepcionar`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones })
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones, ubicacion_id: ubicacionId, ubicacion_nombre: ubicacionNombre })
     });
     return handleResponse(response);
   },
@@ -178,6 +178,12 @@ export const liveApi = {
   finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string): Promise<Equipo> => {
     const response = await fetch(`${API_URL}/equipos/${equipoId}/finalizar-mantenimiento`, {
       method: 'POST', headers: getHeaders(), body: JSON.stringify({ ...data, nuevo_estado: nuevoEstado })
+    });
+    return handleResponse(response);
+  },
+  marcarParaBaja: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string): Promise<Equipo> => {
+    const response = await fetch(`${API_URL}/equipos/${id}/pre-baja`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones, ubicacion_id: ubicacionId, ubicacion_nombre: ubicacionNombre })
     });
     return handleResponse(response);
   },

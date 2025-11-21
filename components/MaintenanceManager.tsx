@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
-import { Equipo, EstadoEquipo } from '../types';
-import { Wrench, CheckCircle, AlertTriangle, X, Save, ArrowRight, User } from 'lucide-react';
+import { Equipo, EstadoEquipo, Departamento } from '../types';
+import { Wrench, CheckCircle, AlertTriangle, X, Save, ArrowRight, User, Warehouse, Zap } from 'lucide-react';
 
 const MaintenanceManager: React.FC = () => {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [bodegas, setBodegas] = useState<Departamento[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Modal State
@@ -15,7 +16,9 @@ const MaintenanceManager: React.FC = () => {
     proveedor: '',
     costo: 0,
     descripcion: '',
-    accion_final: 'DISPONIBLE' as 'DISPONIBLE' | 'BAJA'
+    accion_final: 'DISPONIBLE' as 'DISPONIBLE' | 'BAJA',
+    ubicacion_id: '' as number | string,
+    serie_cargador: ''
   });
 
   useEffect(() => {
@@ -24,9 +27,14 @@ const MaintenanceManager: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    // Get all equipment and filter client-side for EN_MANTENIMIENTO
-    const allEquipos = await api.getEquipos();
+    // Get all equipment and departments in parallel
+    const [allEquipos, deptData] = await Promise.all([
+      api.getEquipos(),
+      api.getDepartamentos()
+    ]);
+    
     setEquipos(allEquipos.filter(e => e.estado === EstadoEquipo.EN_MANTENIMIENTO));
+    setBodegas(deptData.filter(d => d.es_bodega));
     setLoading(false);
   };
 
@@ -37,7 +45,9 @@ const MaintenanceManager: React.FC = () => {
       proveedor: '',
       costo: 0,
       descripcion: '',
-      accion_final: 'DISPONIBLE'
+      accion_final: 'DISPONIBLE',
+      ubicacion_id: bodegas.length > 0 ? bodegas[0].id : '',
+      serie_cargador: equipo.serie_cargador || ''
     });
   };
 
@@ -46,13 +56,23 @@ const MaintenanceManager: React.FC = () => {
     if (!selectedEquipo) return;
 
     try {
+      // Find location name if ID is selected
+      let ubicacionNombre = '';
+      if (formData.ubicacion_id) {
+        const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+        if (bodega) ubicacionNombre = bodega.nombre;
+      }
+
       await api.finalizarMantenimiento(
         selectedEquipo.id, 
         {
           tipo: formData.tipo,
           proveedor: formData.proveedor,
           costo: formData.costo,
-          descripcion: formData.descripcion
+          descripcion: formData.descripcion,
+          ubicacionId: Number(formData.ubicacion_id) || undefined,
+          ubicacionNombre: ubicacionNombre || undefined,
+          serie_cargador: formData.serie_cargador // Send charger serial
         },
         formData.accion_final
       );
@@ -62,6 +82,13 @@ const MaintenanceManager: React.FC = () => {
     } catch (error: any) {
       alert("Error: " + error.message);
     }
+  };
+
+  // Helper to check if it is a laptop
+  const isLaptop = (equipo: Equipo | null) => {
+    if (!equipo || !equipo.tipo_nombre) return false;
+    const typeName = equipo.tipo_nombre.toLowerCase();
+    return typeName.includes('laptop') || typeName.includes('portatil') || typeName.includes('notebook');
   };
 
   return (
@@ -184,6 +211,23 @@ const MaintenanceManager: React.FC = () => {
                 />
               </div>
 
+              {/* Conditional Charger Field for Laptops */}
+              {isLaptop(selectedEquipo) && (
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                   <label className="block text-sm font-medium text-blue-800 mb-1 flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> Serie del Cargador
+                   </label>
+                   <input 
+                     type="text"
+                     placeholder="Ingrese o verifique la serie del cargador"
+                     className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                     value={formData.serie_cargador}
+                     onChange={e => setFormData({...formData, serie_cargador: e.target.value})}
+                   />
+                   <p className="text-xs text-blue-500 mt-1">Verifique si el cargador fue reemplazado.</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Detalle del Trabajo</label>
                 <textarea 
@@ -216,11 +260,31 @@ const MaintenanceManager: React.FC = () => {
                       <p className="text-xs text-slate-500">
                         {selectedEquipo.responsable_id 
                            ? `El equipo retornará al usuario: ${selectedEquipo.responsable_nombre}`
-                           : `El equipo retornará a Bodega IT (Disponible)`
+                           : `El equipo retornará a Inventario (Disponible)`
                         }
                       </p>
                     </div>
                   </label>
+
+                  {/* Reception Location Selector - Visible when Operativo is selected */}
+                  {formData.accion_final === 'DISPONIBLE' && (
+                    <div className="ml-7 mb-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                       <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                          <Warehouse className="w-3 h-3" /> Ubicación de Recepción (Bodega IT)
+                       </label>
+                       <select 
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                          value={formData.ubicacion_id}
+                          onChange={e => setFormData({...formData, ubicacion_id: e.target.value})}
+                          required
+                       >
+                          {bodegas.length === 0 && <option value="">Sin bodegas definidas</option>}
+                          {bodegas.map(b => (
+                             <option key={b.id} value={b.id}>{b.nombre}</option>
+                          ))}
+                       </select>
+                    </div>
+                  )}
 
                   <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-red-400 transition-colors">
                     <input 

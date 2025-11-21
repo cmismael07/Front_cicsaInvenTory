@@ -63,7 +63,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
     } else {
       setEditingId(null);
       setFormData({
-        nombres: '', apellidos: '', nombre_usuario: '', correo: '', password: '',
+        nombres: '', apellidos: '', nombre_usuario: '', numero_empleado: '', correo: '', password: '',
         rol: RolUsuario.USUARIO, departamento_id: undefined, puesto_id: undefined, activo: true
       });
     }
@@ -148,7 +148,7 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                     <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Usuario</th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">N° Empleado / Usuario</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nombre Completo</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Departamento / Puesto</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Rol</th>
@@ -165,8 +165,13 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                                 return (
                                 <tr key={u.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="font-medium text-slate-900">{u.nombre_usuario}</div>
-                                        <div className="text-xs text-slate-500">{u.correo}</div>
+                                        <div className="flex flex-col">
+                                            <span className="font-mono text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded w-fit mb-1">
+                                                {u.numero_empleado || 'S/N'}
+                                            </span>
+                                            <span className="font-medium text-slate-900">{u.nombre_usuario}</span>
+                                            <span className="text-xs text-slate-500">{u.correo}</span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-slate-700">{u.nombre_completo}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -316,15 +321,27 @@ const UserManager: React.FC<UserManagerProps> = ({ currentUser }) => {
                                 <input required className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500" value={formData.apellidos || ''} onChange={e => setFormData({...formData, apellidos: e.target.value})} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                <label className="block text-sm font-medium text-slate-700">Usuario</label>
-                                <input required className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500" value={formData.nombre_usuario || ''} onChange={e => setFormData({...formData, nombre_usuario: e.target.value})} />
-                            </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700">Correo</label>
-                                <input required type="email" className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500" value={formData.correo || ''} onChange={e => setFormData({...formData, correo: e.target.value})} />
+                                <label className="block text-sm font-medium text-blue-800">N° de Empleado</label>
+                                <input 
+                                  type="text" 
+                                  placeholder="Ej. EMP-001"
+                                  className="w-full border border-blue-200 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500 bg-white" 
+                                  value={formData.numero_empleado || ''} 
+                                  onChange={e => setFormData({...formData, numero_empleado: e.target.value})} 
+                                />
                             </div>
+                             <div>
+                                <label className="block text-sm font-medium text-blue-800">Usuario (Login)</label>
+                                <input required className="w-full border border-blue-200 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={formData.nombre_usuario || ''} onChange={e => setFormData({...formData, nombre_usuario: e.target.value})} />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Correo</label>
+                            <input required type="email" className="w-full border border-slate-300 rounded-lg px-3 py-2 mt-1 outline-none focus:ring-2 focus:ring-blue-500" value={formData.correo || ''} onChange={e => setFormData({...formData, correo: e.target.value})} />
                         </div>
                         
                         <div>
