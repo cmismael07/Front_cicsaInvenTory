@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import * as d3 from 'd3-scale';
@@ -6,10 +7,17 @@ import { ReporteGarantia, Licencia } from '../types';
 import { AlertTriangle, Box, CheckCircle, Wrench, Key } from 'lucide-react';
 import StatCard from './StatCard';
 
+interface LicenseSummary {
+  name: string;
+  total: number;
+  available: number;
+  assigned: number;
+}
+
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [warrantyData, setWarrantyData] = useState<ReporteGarantia[]>([]);
-  const [licenseData, setLicenseData] = useState<{total: number, available: number}>({ total: 0, available: 0 });
+  const [licenseStats, setLicenseStats] = useState<LicenseSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,10 +31,23 @@ const Dashboard: React.FC = () => {
         setStats(statsData);
         setWarrantyData(warranties);
         
-        // Calculate License Stats
-        const totalLic = licencias.length;
-        const availableLic = licencias.filter(l => !l.usuario_id).length;
-        setLicenseData({ total: totalLic, available: availableLic });
+        // Calculate License Stats Grouped by Type
+        const summaryMap: Record<string, LicenseSummary> = {};
+
+        licencias.forEach(l => {
+          if (!summaryMap[l.tipo_nombre]) {
+            summaryMap[l.tipo_nombre] = { name: l.tipo_nombre, total: 0, available: 0, assigned: 0 };
+          }
+          
+          summaryMap[l.tipo_nombre].total++;
+          if (l.usuario_id) {
+            summaryMap[l.tipo_nombre].assigned++;
+          } else {
+            summaryMap[l.tipo_nombre].available++;
+          }
+        });
+
+        setLicenseStats(Object.values(summaryMap));
 
       } catch (error) {
         console.error("Error fetching dashboard data", error);
@@ -84,12 +105,33 @@ const Dashboard: React.FC = () => {
           icon={<Wrench className="w-6 h-6 text-amber-600" />} 
           bgColor="bg-amber-50" 
         />
-         <StatCard 
-          title="Licencias Libres" 
-          value={licenseData.available} 
-          icon={<Key className="w-6 h-6 text-purple-600" />} 
-          bgColor="bg-purple-50" 
-        />
+         
+         {/* Custom License Card showing detailed breakdown */}
+         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col max-h-40">
+            <div className="flex items-center justify-between mb-2">
+               <p className="text-sm font-medium text-slate-500">Licencias</p>
+               <div className="p-1.5 rounded-lg bg-purple-50">
+                  <Key className="w-4 h-4 text-purple-600" />
+               </div>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+               {licenseStats.length === 0 ? (
+                 <p className="text-xs text-slate-400 italic text-center mt-4">Sin licencias registradas</p>
+               ) : (
+                 licenseStats.map((ls, idx) => (
+                   <div key={idx} className="border-b border-slate-50 last:border-0 pb-1.5">
+                      <p className="text-xs font-bold text-slate-700 truncate mb-0.5" title={ls.name}>{ls.name}</p>
+                      <div className="flex justify-between text-[10px] leading-none">
+                         <span className="text-slate-500" title="Total">Tot: <b>{ls.total}</b></span>
+                         <span className="text-green-600 font-medium" title="Disponibles">Disp: <b>{ls.available}</b></span>
+                         <span className="text-blue-600 font-medium" title="Asignadas">Asig: <b>{ls.assigned}</b></span>
+                      </div>
+                   </div>
+                 ))
+               )}
+            </div>
+         </div>
+
         <StatCard 
           title="Garantías Críticas" 
           value={warrantyData.length} 
