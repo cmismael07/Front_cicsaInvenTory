@@ -15,6 +15,7 @@ export enum EstadoEquipo {
 export interface Departamento {
   id: number;
   nombre: string;
+  es_bodega?: boolean; // Indica si el departamento funciona como almacén de IT
 }
 
 export interface Puesto {

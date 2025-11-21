@@ -19,7 +19,10 @@ const handleResponse = async (response: Response) => {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'Error en la petición al servidor');
   }
-  return response.json();
+  const body = await response.json().catch(() => ({}));
+  // Si la API usa paginación de Laravel, devolver solo el array de datos
+  if (body && Array.isArray(body.data)) return body.data;
+  return body;
 };
 
 export const liveApi = {

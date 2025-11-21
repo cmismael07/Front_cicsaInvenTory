@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
-import { Equipo, EstadoEquipo, TipoEquipo, Usuario } from '../types';
-import { Search, Filter, Plus, MoreVertical, Edit, UserCheck, RotateCcw, Trash2, X, Save, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Equipo, EstadoEquipo, TipoEquipo, Usuario, Departamento } from '../types';
+import { Search, Filter, Plus, MoreVertical, Edit, UserCheck, RotateCcw, Trash2, X, Save, Wrench } from 'lucide-react';
 
 type ModalAction = 'CREATE' | 'EDIT' | 'ASSIGN' | 'RETURN' | 'BAJA' | 'TO_MAINTENANCE' | null;
 
@@ -12,13 +12,10 @@ const EquipmentList: React.FC = () => {
   const [filterText, setFilterText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5; // Set to 5 so pagination is visible with small mock data (usually 10-20)
-
   // Catalogs for forms
   const [tipos, setTipos] = useState<TipoEquipo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [bodegas, setBodegas] = useState<Departamento[]>([]);
 
   // Modal State
   const [modalAction, setModalAction] = useState<ModalAction>(null);
@@ -34,14 +31,16 @@ const EquipmentList: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const [eqData, tipoData, userData] = await Promise.all([
+    const [eqData, tipoData, userData, deptData] = await Promise.all([
       api.getEquipos(),
       api.getTiposEquipo(),
-      api.getUsuarios()
+      api.getUsuarios(),
+      api.getDepartamentos()
     ]);
     setEquipos(eqData);
     setTipos(tipoData);
     setUsuarios(userData);
+    setBodegas(deptData.filter(d => d.es_bodega));
     setFilteredEquipos(eqData);
   };
 
@@ -61,15 +60,7 @@ const EquipmentList: React.FC = () => {
     }
 
     setFilteredEquipos(res);
-    setCurrentPage(1); // Reset to first page when filters change
   }, [filterText, statusFilter, equipos]);
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredEquipos.length / ITEMS_PER_PAGE);
-  const paginatedEquipos = filteredEquipos.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
 
   const getStatusColor = (estado: EstadoEquipo) => {
     switch (estado) {
@@ -104,7 +95,8 @@ const EquipmentList: React.FC = () => {
       setFormData({
         codigo_activo: '', numero_serie: '', marca: '', modelo: '', 
         tipo_equipo_id: tipos[0]?.id || '', fecha_compra: new Date().toISOString().split('T')[0], 
-        valor_compra: 0, anos_garantia: 1, estado: EstadoEquipo.DISPONIBLE, observaciones: ''
+        valor_compra: 0, anos_garantia: 1, estado: EstadoEquipo.DISPONIBLE, observaciones: '',
+        ubicacion_id: bodegas.length > 0 ? bodegas[0].id : ''
       });
     } else if (action === 'EDIT' && equipo) {
       setFormData({ ...equipo });
@@ -120,7 +112,17 @@ const EquipmentList: React.FC = () => {
     setIsLoadingAction(true);
     try {
       if (modalAction === 'CREATE') {
-        await api.createEquipo(formData);
+        // Ensure we send the location name if an ID is selected
+        let locationName = '';
+        if (formData.ubicacion_id) {
+           const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+           if (bodega) locationName = bodega.nombre;
+        }
+        
+        await api.createEquipo({
+            ...formData,
+            ubicacion_nombre: locationName // Pass explicit location name
+        });
       } else if (modalAction === 'EDIT' && selectedEquipo) {
         await api.updateEquipo(selectedEquipo.id, formData);
       } else if (modalAction === 'ASSIGN' && selectedEquipo) {
@@ -185,8 +187,8 @@ const EquipmentList: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible flex flex-col">
-        <div className="overflow-x-auto min-h-[300px]">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
@@ -199,7 +201,7 @@ const EquipmentList: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {paginatedEquipos.map((equipo) => (
+              {filteredEquipos.map((equipo) => (
                 <tr key={equipo.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
@@ -277,49 +279,12 @@ const EquipmentList: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination Controls */}
-        {filteredEquipos.length > 0 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-slate-500">
-              Mostrando <span className="font-medium">{((currentPage - 1) * ITEMS_PER_PAGE) + 1}</span> a <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, filteredEquipos.length)}</span> de <span className="font-medium">{filteredEquipos.length}</span> resultados
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="hidden sm:flex gap-1">
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentPage(idx + 1)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === idx + 1 
-                        ? 'bg-blue-600 text-white' 
-                        : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        
+        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50">
+           <p className="text-xs text-slate-500 text-center sm:text-right">
+             Total registros: <span className="font-medium text-slate-700">{filteredEquipos.length}</span>
+           </p>
+        </div>
       </div>
 
       {/* Modal */}
@@ -368,13 +333,34 @@ const EquipmentList: React.FC = () => {
                         value={formData.modelo || ''} onChange={e => setFormData({...formData, modelo: e.target.value})} />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Tipo Equipo</label>
-                    <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={formData.tipo_equipo_id || ''} onChange={e => setFormData({...formData, tipo_equipo_id: Number(e.target.value)})}>
-                      {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Tipo Equipo</label>
+                        <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={formData.tipo_equipo_id || ''} onChange={e => setFormData({...formData, tipo_equipo_id: Number(e.target.value)})}>
+                        {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                        </select>
+                    </div>
+                    
+                     {/* New Location Select for Create Action */}
+                     {modalAction === 'CREATE' && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación Inicial (Bodega)</label>
+                            <select 
+                                required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={formData.ubicacion_id || ''} 
+                                onChange={e => setFormData({...formData, ubicacion_id: Number(e.target.value)})}
+                            >
+                                {bodegas.length === 0 && <option value="">Sin bodegas definidas</option>}
+                                {bodegas.map(b => (
+                                    <option key={b.id} value={b.id}>{b.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                     )}
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Compra</label>
@@ -405,7 +391,7 @@ const EquipmentList: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Usuario Responsable</label>
                     <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={formData.usuario_id || ''} onChange={e => setFormData({...formData, usuario_id: Number(e.target.value)})}>
+                      value={formData.usuario_id || ''} onChange={e => setFormData({...formData,usuario_id: Number(e.target.value)})}>
                       <option value="">Seleccione un usuario...</option>
                       {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre_completo} ({u.departamento_nombre})</option>)}
                     </select>

@@ -10,10 +10,10 @@ const USE_LIVE_API = false;
 // --- Mock Data Initialization ---
 
 let MOCK_DEPARTAMENTOS: Departamento[] = [
-  { id: 1, nombre: 'Tecnología (IT)' },
-  { id: 2, nombre: 'Recursos Humanos' },
-  { id: 3, nombre: 'Ventas' },
-  { id: 4, nombre: 'Finanzas' }
+  { id: 1, nombre: 'Tecnología (IT)', es_bodega: true },
+  { id: 2, nombre: 'Recursos Humanos', es_bodega: false },
+  { id: 3, nombre: 'Ventas', es_bodega: false },
+  { id: 4, nombre: 'Finanzas', es_bodega: false }
 ];
 
 let MOCK_PUESTOS: Puesto[] = [
@@ -137,15 +137,15 @@ const mockApiImplementation = {
     await delay(300);
     return [...MOCK_DEPARTAMENTOS];
   },
-  createDepartamento: async (nombre: string): Promise<Departamento> => {
+  createDepartamento: async (data: { nombre: string, es_bodega?: boolean }): Promise<Departamento> => {
     await delay(300);
-    const newDept = { id: Date.now(), nombre };
+    const newDept = { id: Date.now(), nombre: data.nombre, es_bodega: !!data.es_bodega };
     MOCK_DEPARTAMENTOS.push(newDept);
     return newDept;
   },
-  updateDepartamento: async (id: number, nombre: string): Promise<Departamento> => {
+  updateDepartamento: async (id: number, data: { nombre: string, es_bodega?: boolean }): Promise<Departamento> => {
     await delay(300);
-    MOCK_DEPARTAMENTOS = MOCK_DEPARTAMENTOS.map(d => d.id === id ? { ...d, nombre } : d);
+    MOCK_DEPARTAMENTOS = MOCK_DEPARTAMENTOS.map(d => d.id === id ? { ...d, nombre: data.nombre, es_bodega: !!data.es_bodega } : d);
     return MOCK_DEPARTAMENTOS.find(d => d.id === id)!;
   },
   deleteDepartamento: async (id: number) => {
@@ -157,15 +157,15 @@ const mockApiImplementation = {
     await delay(300);
     return [...MOCK_PUESTOS];
   },
-  createPuesto: async (nombre: string): Promise<Puesto> => {
+  createPuesto: async (data: { nombre: string }): Promise<Puesto> => {
     await delay(300);
-    const newPuesto = { id: Date.now(), nombre };
+    const newPuesto = { id: Date.now(), nombre: data.nombre };
     MOCK_PUESTOS.push(newPuesto);
     return newPuesto;
   },
-  updatePuesto: async (id: number, nombre: string): Promise<Puesto> => {
+  updatePuesto: async (id: number, data: { nombre: string }): Promise<Puesto> => {
     await delay(300);
-    MOCK_PUESTOS = MOCK_PUESTOS.map(p => p.id === id ? { ...p, nombre } : p);
+    MOCK_PUESTOS = MOCK_PUESTOS.map(p => p.id === id ? { ...p, nombre: data.nombre } : p);
     return MOCK_PUESTOS.find(p => p.id === id)!;
   },
   deletePuesto: async (id: number) => {
@@ -289,7 +289,7 @@ const mockApiImplementation = {
       ...data,
       id: Math.floor(Math.random() * 10000),
       tipo_nombre: tipo?.nombre || 'Desconocido',
-      ubicacion_nombre: 'Bodega Central', // Default
+      ubicacion_nombre: data.ubicacion_nombre || 'Bodega Central', // Allow dynamic location
       estado: EstadoEquipo.DISPONIBLE
     };
     MOCK_EQUIPOS = [newEquipo, ...MOCK_EQUIPOS];

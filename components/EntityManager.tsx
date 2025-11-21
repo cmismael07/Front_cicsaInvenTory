@@ -1,45 +1,53 @@
+
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit, X, Save } from 'lucide-react';
+import { Plus, Trash2, Edit, X, Save, Warehouse } from 'lucide-react';
 
 interface Entity {
   id: number;
   nombre: string;
+  es_bodega?: boolean;
 }
 
 interface EntityManagerProps {
   title: string;
   items: Entity[];
-  onCreate: (nombre: string) => Promise<any>;
-  onUpdate: (id: number, nombre: string) => Promise<any>;
+  onCreate: (data: any) => Promise<any>;
+  onUpdate: (id: number, data: any) => Promise<any>;
   onDelete: (id: number) => Promise<void>;
   onRefresh: () => void;
+  withWarehouseOption?: boolean;
 }
 
-const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, onUpdate, onDelete, onRefresh }) => {
+const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, onUpdate, onDelete, onRefresh, withWarehouseOption = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Entity | null>(null);
-  const [nameInput, setNameInput] = useState('');
+  const [formData, setFormData] = useState({ nombre: '', es_bodega: false });
 
   const handleOpenCreate = () => {
     setEditingItem(null);
-    setNameInput('');
+    setFormData({ nombre: '', es_bodega: false });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (item: Entity) => {
     setEditingItem(item);
-    setNameInput(item.nombre);
+    setFormData({ nombre: item.nombre, es_bodega: !!item.es_bodega });
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameInput.trim()) return;
+    if (!formData.nombre.trim()) return;
+
+    const dataToSend = {
+      nombre: formData.nombre,
+      ...(withWarehouseOption ? { es_bodega: formData.es_bodega } : {})
+    };
 
     if (editingItem) {
-      await onUpdate(editingItem.id, nameInput);
+      await onUpdate(editingItem.id, dataToSend);
     } else {
-      await onCreate(nameInput);
+      await onCreate(dataToSend);
     }
     setIsModalOpen(false);
     onRefresh();
@@ -67,6 +75,9 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, o
             <tr>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">ID</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nombre</th>
+              {withWarehouseOption && (
+                 <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Tipo</th>
+              )}
               <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Acciones</th>
             </tr>
           </thead>
@@ -75,6 +86,19 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, o
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 w-20">#{item.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{item.nombre}</td>
+                {withWarehouseOption && (
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    {item.es_bodega ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <Warehouse className="w-3 h-3" /> Bodega IT
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                        Administrativo
+                      </span>
+                    )}
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button onClick={() => handleOpenEdit(item)} className="text-blue-600 hover:text-blue-800 mr-3 p-1">
                     <Edit className="w-4 h-4" />
@@ -87,7 +111,7 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, o
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-slate-500 text-sm">No hay registros creados.</td>
+                <td colSpan={withWarehouseOption ? 4 : 3} className="px-6 py-8 text-center text-slate-500 text-sm">No hay registros creados.</td>
               </tr>
             )}
           </tbody>
@@ -115,11 +139,31 @@ const EntityManager: React.FC<EntityManagerProps> = ({ title, items, onCreate, o
                   autoFocus
                   type="text" 
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
+                  value={formData.nombre}
+                  onChange={e => setFormData({...formData, nombre: e.target.value})}
                   placeholder={`Ej. ${title === 'Departamento' ? 'Marketing' : 'Analista Sr.'}`}
                 />
               </div>
+
+              {withWarehouseOption && (
+                 <div className="pt-2">
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        checked={formData.es_bodega}
+                        onChange={e => setFormData({...formData, es_bodega: e.target.checked})}
+                      />
+                      <div className="flex-1">
+                         <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                           <Warehouse className="w-4 h-4 text-slate-500" />
+                           Funciona como Bodega de Sistemas
+                         </div>
+                         <p className="text-xs text-slate-500 mt-0.5">Habilitar para áreas donde se almacenan equipos de IT.</p>
+                      </div>
+                    </label>
+                 </div>
+              )}
               
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">
