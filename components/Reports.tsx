@@ -1,17 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
-import { api } from '../services/mockApi';
+import { reportService } from '../services/reportService';
 import { Usuario, Equipo } from '../types';
-import { RefreshCw, History, CalendarRange, Wrench, Key } from 'lucide-react';
+import { History, CalendarRange, Wrench, ShieldAlert, RefreshCw, Key } from 'lucide-react';
 import { AssignmentsTab } from './reports/AssignmentsTab';
+import { HistoryTab } from './reports/HistoryTab';
+import { MaintenanceReportTab } from './reports/MaintenanceReportTab';
+import { WarrantiesTab } from './reports/WarrantiesTab';
+import { ReplacementTab } from './reports/ReplacementTab';
+import { LicenseReportTab } from './reports/LicenseReportTab';
 
 const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState('ASSIGNMENTS');
+  
+  // Data for Assignments Tab (shared logic)
   const [users, setUsers] = useState<Usuario[]>([]);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
 
   useEffect(() => {
-    Promise.all([api.getUsuarios(), api.getEquipos()]).then(([u, e]) => {
+    // Preload basic data used in filters
+    Promise.all([reportService.getUsers(), reportService.getEquipos()]).then(([u, e]) => {
         setUsers(u);
         setEquipos(e);
     });
@@ -19,23 +27,31 @@ const Reports: React.FC = () => {
 
   const TabButton = ({ id, icon: Icon, label }: any) => (
     <button onClick={() => setActiveTab(id)} 
-      className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>
+      className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
       <Icon className="w-4 h-4" /> {label}
     </button>
   );
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800">Reportes</h2>
-      <div className="flex border-b overflow-x-auto bg-white rounded-t-lg shadow-sm">
+      <h2 className="text-2xl font-bold text-slate-800">Centro de Reportes</h2>
+      
+      <div className="flex border-b border-slate-200 overflow-x-auto bg-white rounded-t-lg shadow-sm">
         <TabButton id="ASSIGNMENTS" icon={CalendarRange} label="Asignaciones" />
-        <TabButton id="HISTORY" icon={History} label="Historial" />
-        {/* Add other tabs here */}
+        <TabButton id="LICENSES" icon={Key} label="Licencias Asignadas" />
+        <TabButton id="HISTORY" icon={History} label="Bitácora de Movimientos" />
+        <TabButton id="MAINTENANCE" icon={Wrench} label="Historial Mantenimiento" />
+        <TabButton id="WARRANTY" icon={ShieldAlert} label="Garantías" />
+        <TabButton id="REPLACEMENT" icon={RefreshCw} label="Plan de Renovación" />
       </div>
 
-      <div className="bg-white p-6 rounded-b-lg shadow-sm border border-t-0">
+      <div className="bg-white p-6 rounded-b-lg shadow-sm border border-t-0 min-h-[500px]">
         {activeTab === 'ASSIGNMENTS' && <AssignmentsTab usuarios={users} equipos={equipos} />}
-        {activeTab === 'HISTORY' && <div className="text-center py-10 text-slate-400">Componente Historial pendiente de refactor...</div>}
+        {activeTab === 'LICENSES' && <LicenseReportTab />}
+        {activeTab === 'HISTORY' && <HistoryTab />}
+        {activeTab === 'MAINTENANCE' && <MaintenanceReportTab />}
+        {activeTab === 'WARRANTY' && <WarrantiesTab />}
+        {activeTab === 'REPLACEMENT' && <ReplacementTab />}
       </div>
     </div>
   );
