@@ -224,11 +224,17 @@ export const liveApi = {
     const response = await fetch(`${API_URL}/licencias`, { headers: getHeaders() });
     return handleResponse(response);
   },
-  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string): Promise<void> => {
-    await fetch(`${API_URL}/licencias/stock`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ tipo_id: tipoId, cantidad, fecha_vencimiento: fechaVencimiento })
-    });
-  },
+
+agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string): Promise<any> => {
+  const response = await fetch(`${API_URL}/tipos-licencia/${tipoId}/add-stock`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ cantidad, fecha_vencimiento: fechaVencimiento })
+ 
+  });
+  return handleResponse(response);
+},
+
   asignarLicencia: async (licenciaId: number, usuarioId: number): Promise<Licencia> => {
     const response = await fetch(`${API_URL}/licencias/${licenciaId}/asignar`, {
       method: 'POST', headers: getHeaders(), body: JSON.stringify({ usuario_id: usuarioId })
@@ -275,4 +281,7 @@ export const liveApi = {
     const response = await fetch(`${API_URL}/notificaciones`, { headers: getHeaders() });
     return handleResponse(response);
   }
+
+
+  
 };

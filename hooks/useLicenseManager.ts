@@ -33,12 +33,17 @@ export const useLicenseManager = () => {
     loadData();
   }, [loadData]);
 
-  const createType = async (data: { nombre: string, proveedor: string, descripcion: string, stockInicial: number, fechaVencimiento: string }) => {
+ const createType = async (data: { nombre: string, proveedor: string, descripcion: string, stockInicial: number, fechaVencimiento: string }) => {
     try {
       const newType = await api.createTipoLicencia({
-        nombre: data.nombre,
-        proveedor: data.proveedor,
-        descripcion: data.descripcion
+      nombre: data.nombre,
+      proveedor: data.proveedor,
+      descripcion: data.descripcion,
+      stock: data.stockInicial, 
+      fecha_vencimiento: data.fechaVencimiento 
+
+
+
       });
 
       if (data.stockInicial > 0) {
