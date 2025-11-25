@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown, Key } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Usuario, Notificacion } from '../types';
+import Swal from 'sweetalert2';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -35,11 +36,21 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
 
     try {
       await api.changePassword(user.id, passwordForm.newPass);
-      alert("Contraseña actualizada correctamente");
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'Contraseña actualizada correctamente',
+        icon: 'success',
+        confirmButtonColor: '#2563eb'
+      });
       setIsPasswordModalOpen(false);
       setPasswordForm({ newPass: '', confirmPass: '' });
     } catch (err: any) {
-      alert("Error: " + err.message);
+      Swal.fire({
+        title: 'Error',
+        text: err.message,
+        icon: 'error',
+        confirmButtonColor: '#2563eb'
+      });
     }
   };
 
@@ -80,11 +91,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem to="/organizacion" icon={Building2} label="Organización" />
+          <NavItem to="/usuarios" icon={Users} label="Usuarios" />
+          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
-          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
-          <NavItem to="/usuarios" icon={Users} label="Usuarios" />
-          <NavItem to="/organizacion" icon={Building2} label="Organización" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
         </nav>
@@ -108,11 +119,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
         </div>
         <nav className="p-4 space-y-1 overflow-y-auto">
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem to="/organizacion" icon={Building2} label="Organización" />
+          <NavItem to="/usuarios" icon={Users} label="Usuarios" />
+          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
-          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
-          <NavItem to="/usuarios" icon={Users} label="Usuarios" />
-          <NavItem to="/organizacion" icon={Building2} label="Organización" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
         </nav>

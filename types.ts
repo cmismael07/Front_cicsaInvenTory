@@ -9,12 +9,14 @@ export enum EstadoEquipo {
   ACTIVO = 'Activo',
   EN_MANTENIMIENTO = 'En Mantenimiento',
   BAJA = 'Baja',
-  DISPONIBLE = 'Disponible'
+  DISPONIBLE = 'Disponible',
+  PARA_BAJA = 'Para Baja'
 }
 
 export interface Departamento {
   id: number;
   nombre: string;
+  es_bodega?: boolean; // Indica si el departamento funciona como almacén de IT
 }
 
 export interface Puesto {
@@ -25,6 +27,7 @@ export interface Puesto {
 export interface Usuario {
   id: number;
   nombre_usuario: string;
+  numero_empleado?: string; // Nuevo campo
   nombres: string;
   apellidos: string;
   nombre_completo: string; // Computed or combined
@@ -57,6 +60,7 @@ export interface Equipo {
   marca: string;
   tipo_equipo_id: number;
   tipo_nombre?: string;
+  serie_cargador?: string; // Nuevo campo para Laptops
   fecha_compra: string; // ISO Date
   valor_compra: number;
   anos_garantia: number;
@@ -72,7 +76,7 @@ export interface HistorialMovimiento {
   id: number;
   equipo_id: number;
   equipo_codigo: string;
-  tipo_accion: 'CREACION' | 'EDICION' | 'ASIGNACION' | 'RECEPCION' | 'BAJA' | 'MANTENIMIENTO';
+  tipo_accion: 'CREACION' | 'EDICION' | 'ASIGNACION' | 'RECEPCION' | 'BAJA' | 'MANTENIMIENTO' | 'PRE_BAJA';
   fecha: string;
   usuario_responsable: string; // Who performed the action
   detalle: string;
@@ -87,6 +91,7 @@ export interface HistorialAsignacion {
   fecha_inicio: string;
   fecha_fin: string | null; // null indica asignación actual (vigente)
   ubicacion: string;
+  archivo_pdf?: string; // URL o nombre del archivo cargado
 }
 
 export interface ReporteGarantia {

@@ -2,7 +2,8 @@
 import { Equipo, Usuario, Departamento, Puesto, TipoEquipo, HistorialMovimiento, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, ReporteGarantia, Notificacion } from '../types';
 
 // URL base de tu API Laravel (ajusta el puerto si es necesario)
-const API_URL = 'http://localhost:8000/api';
+//const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://10.68.104.57:8000/api';
 
 // Helper para headers con Token (Asumiendo Laravel Sanctum)
 const getHeaders = () => {
@@ -19,7 +20,10 @@ const handleResponse = async (response: Response) => {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'Error en la petición al servidor');
   }
-  return response.json();
+  const body = await response.json().catch(() => ({}));
+  // Si la API usa paginación de Laravel, devolver solo el array de datos
+  if (body && Array.isArray(body.data)) return body.data;
+  return body;
 };
 
 export const liveApi = {
@@ -154,9 +158,9 @@ export const liveApi = {
     });
     return handleResponse(response);
   },
-  recepcionarEquipo: async (id: number, observaciones: string): Promise<Equipo> => {
+  recepcionarEquipo: async (id: number, observaciones: string, ubicacionId?: number, ubicacionNombre?: string): Promise<Equipo> => {
     const response = await fetch(`${API_URL}/equipos/${id}/recepcionar`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones })
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones, ubicacion_id: ubicacionId, ubicacion_nombre: ubicacionNombre })
     });
     return handleResponse(response);
   },
@@ -175,6 +179,23 @@ export const liveApi = {
   finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string): Promise<Equipo> => {
     const response = await fetch(`${API_URL}/equipos/${equipoId}/finalizar-mantenimiento`, {
       method: 'POST', headers: getHeaders(), body: JSON.stringify({ ...data, nuevo_estado: nuevoEstado })
+    });
+    return handleResponse(response);
+  },
+  marcarParaBaja: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string): Promise<Equipo> => {
+    const response = await fetch(`${API_URL}/equipos/${id}/pre-baja`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones, ubicacion_id: ubicacionId, ubicacion_nombre: ubicacionNombre })
+    });
+    return handleResponse(response);
+  },
+  subirArchivoAsignacion: async (id: number, file: File): Promise<HistorialAsignacion> => {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    const response = await fetch(`${API_URL}/asignaciones/${id}/archivo`, {
+        method: 'POST',
+        // Do NOT set Content-Type header for FormData, let browser set it with boundary
+        headers: { ...(localStorage.getItem('auth_token') ? { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` } : {}) },
+        body: formData
     });
     return handleResponse(response);
   },
@@ -203,11 +224,17 @@ export const liveApi = {
     const response = await fetch(`${API_URL}/licencias`, { headers: getHeaders() });
     return handleResponse(response);
   },
-  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string): Promise<void> => {
-    await fetch(`${API_URL}/licencias/stock`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ tipo_id: tipoId, cantidad, fecha_vencimiento: fechaVencimiento })
-    });
-  },
+
+agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string): Promise<any> => {
+  const response = await fetch(`${API_URL}/tipos-licencia/${tipoId}/add-stock`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ cantidad, fecha_vencimiento: fechaVencimiento })
+ 
+  });
+  return handleResponse(response);
+},
+
   asignarLicencia: async (licenciaId: number, usuarioId: number): Promise<Licencia> => {
     const response = await fetch(`${API_URL}/licencias/${licenciaId}/asignar`, {
       method: 'POST', headers: getHeaders(), body: JSON.stringify({ usuario_id: usuarioId })
@@ -254,4 +281,7 @@ export const liveApi = {
     const response = await fetch(`${API_URL}/notificaciones`, { headers: getHeaders() });
     return handleResponse(response);
   }
+
+
+  
 };

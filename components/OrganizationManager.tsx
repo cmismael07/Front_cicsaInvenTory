@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
 import { Departamento, Puesto } from '../types';
@@ -71,6 +72,7 @@ const OrganizationManager: React.FC = () => {
                 onUpdate={api.updateDepartamento}
                 onDelete={api.deleteDepartamento}
                 onRefresh={loadData}
+                withWarehouseOption={true}
               />
             )}
             {activeTab === 'JOBS' && (

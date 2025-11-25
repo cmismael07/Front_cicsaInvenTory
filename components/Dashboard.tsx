@@ -1,153 +1,96 @@
-import React, { useEffect, useState } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import * as d3 from 'd3-scale';
-import { api } from '../services/mockApi';
-import { ReporteGarantia, Licencia } from '../types';
-import { AlertTriangle, Box, CheckCircle, Wrench, Key } from 'lucide-react';
-import StatCard from './StatCard';
+
+import React from 'react';
+import { AlertTriangle, Box, CheckCircle, Wrench, Laptop } from 'lucide-react';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { GroupedStatCard } from './dashboard/GroupedStatCard';
+import { LicenseCard } from './dashboard/LicenseCard';
+import { StatusPieChart } from './dashboard/StatusPieChart';
+import { WarrantyChart } from './dashboard/WarrantyChart';
+import { EquipmentStackChart } from './dashboard/EquipmentStackChart';
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [warrantyData, setWarrantyData] = useState<ReporteGarantia[]>([]);
-  const [licenseData, setLicenseData] = useState<{total: number, available: number}>({ total: 0, available: 0 });
-  const [loading, setLoading] = useState(true);
+  const { 
+    loading, 
+    groupedStats, 
+    warrantyData, 
+    licenseStats, 
+    equipmentBreakdown 
+  } = useDashboardData();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, warranties, licencias] = await Promise.all([
-          api.getStats(),
-          api.getWarrantyReport(),
-          api.getLicencias()
-        ]);
-        setStats(statsData);
-        setWarrantyData(warranties);
-        
-        // Calculate License Stats
-        const totalLic = licencias.length;
-        const availableLic = licencias.filter(l => !l.usuario_id).length;
-        setLicenseData({ total: totalLic, available: availableLic });
-
-      } catch (error) {
-        console.error("Error fetching dashboard data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  if (loading || !stats) {
+  if (loading) {
     return <div className="p-8 text-center text-gray-500">Cargando Dashboard...</div>;
   }
 
   // Data for Pie Chart
   const pieData = [
-    { name: 'Activos', value: stats.assigned },
-    { name: 'Disponibles', value: stats.available },
-    { name: 'Mantenimiento', value: stats.maintenance },
-    { name: 'Baja', value: stats.retired },
-  ];
-
-  // Use D3 to generate a color scale
-  const colorScale = d3.scaleOrdinal<string>()
-    .domain(['Activos', 'Disponibles', 'Mantenimiento', 'Baja'])
-    .range(['#10b981', '#3b82f6', '#f59e0b', '#ef4444']);
-
-  // Data for Warranty Bar Chart
-  const barData = warrantyData.slice(0, 5).map(w => ({
-    name: w.equipo.codigo_activo,
-    dias: w.dias_restantes,
-  }));
+    { name: 'Activos', value: groupedStats.grandTotals.assigned },
+    { name: 'Disponibles', value: groupedStats.grandTotals.available },
+    { name: 'Mantenimiento', value: groupedStats.grandTotals.maintenance },
+    { name: 'Para Baja', value: groupedStats.grandTotals.pre_baja },
+  ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-slate-800">Dashboard General</h2>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard 
-          title="Total Equipos" 
-          value={stats.total} 
-          icon={<Box className="w-6 h-6 text-blue-600" />} 
-          bgColor="bg-blue-50" 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start">
+        <GroupedStatCard
+            title="Total Equipos"
+            icon={<Box className="w-5 h-5 text-blue-600" />}
+            dataMap={groupedStats.total}
+            total={groupedStats.grandTotals.total}
+            bgColor="bg-blue-50"
+            textColor="text-blue-700"
         />
-        <StatCard 
-          title="Asignados" 
-          value={stats.assigned} 
-          icon={<CheckCircle className="w-6 h-6 text-green-600" />} 
-          bgColor="bg-green-50" 
+
+        <GroupedStatCard
+            title="Asignados"
+            icon={<CheckCircle className="w-5 h-5 text-green-600" />}
+            dataMap={groupedStats.assigned}
+            total={groupedStats.grandTotals.assigned}
+            bgColor="bg-green-50"
+            textColor="text-green-700"
         />
-        <StatCard 
-          title="En Mantenimiento" 
-          value={stats.maintenance} 
-          icon={<Wrench className="w-6 h-6 text-amber-600" />} 
-          bgColor="bg-amber-50" 
+
+        <GroupedStatCard
+            title="Disponibles"
+            icon={<Laptop className="w-5 h-5 text-indigo-600" />}
+            dataMap={groupedStats.available}
+            total={groupedStats.grandTotals.available}
+            bgColor="bg-indigo-50"
+            textColor="text-indigo-700"
         />
-         <StatCard 
-          title="Licencias Libres" 
-          value={licenseData.available} 
-          icon={<Key className="w-6 h-6 text-purple-600" />} 
-          bgColor="bg-purple-50" 
+
+        <GroupedStatCard
+            title="Mantenimiento"
+            icon={<Wrench className="w-5 h-5 text-amber-600" />}
+            dataMap={groupedStats.maintenance}
+            total={groupedStats.grandTotals.maintenance}
+            bgColor="bg-amber-50"
+            textColor="text-amber-700"
         />
-        <StatCard 
-          title="Garantías Críticas" 
-          value={warrantyData.length} 
-          icon={<AlertTriangle className="w-6 h-6 text-red-600" />} 
-          bgColor="bg-red-50" 
+
+        <GroupedStatCard
+            title="Garantías (Riesgo)"
+            icon={<AlertTriangle className="w-5 h-5 text-red-600" />}
+            dataMap={groupedStats.warranty}
+            total={groupedStats.grandTotals.warranty}
+            bgColor="bg-red-50"
+            textColor="text-red-700"
         />
+         
+        <LicenseCard stats={licenseStats} />
       </div>
 
-      {/* Charts Section */}
+      {/* Charts Section Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Distribution */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-700 mb-4">Estado del Inventario</h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={colorScale(entry.name)} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Warranty Expiration */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-700 mb-4">Garantías Próximas a Vencer (Días)</h3>
-          {barData.length > 0 ? (
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip cursor={{fill: 'transparent'}} />
-                  <Bar dataKey="dias" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={30} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-slate-400">
-              No hay garantías próximas a vencer
-            </div>
-          )}
-        </div>
+        <StatusPieChart data={pieData} />
+        <WarrantyChart data={warrantyData} />
       </div>
+
+      {/* Charts Section Row 2 */}
+      <EquipmentStackChart breakdown={equipmentBreakdown} />
     </div>
   );
 };
