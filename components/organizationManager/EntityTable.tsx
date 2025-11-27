@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Edit, Trash2, Warehouse } from 'lucide-react';
+import { Edit, Trash2, Warehouse, MapPin } from 'lucide-react';
 import { EntityBase } from '../../hooks/useEntityManager';
 
 interface EntityTableProps {
@@ -19,7 +19,10 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
             <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">ID</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nombre</th>
             {withWarehouseOption && (
-                <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Tipo</th>
+                <>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Ciudad</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Tipo</th>
+                </>
             )}
             <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase">Acciones</th>
           </tr>
@@ -30,17 +33,29 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 w-20">#{item.id}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{item.nombre}</td>
               {withWarehouseOption && (
-                <td className="px-6 py-4 whitespace-nowrap text-center">
-                  {item.es_bodega ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
-                      <Warehouse className="w-3 h-3" /> Bodega IT
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                      Administrativo
-                    </span>
-                  )}
-                </td>
+                <>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    {item.ciudad_nombre ? (
+                        <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            {item.ciudad_nombre}
+                        </div>
+                    ) : (
+                        <span className="text-slate-400 italic text-xs">Sin asignar</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    {item.es_bodega ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                        <Warehouse className="w-3 h-3" /> Bodega IT
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                        Administrativo
+                      </span>
+                    )}
+                  </td>
+                </>
               )}
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button 
@@ -62,7 +77,7 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
           ))}
           {items.length === 0 && (
             <tr>
-              <td colSpan={withWarehouseOption ? 4 : 3} className="px-6 py-8 text-center text-slate-500 text-sm">
+              <td colSpan={withWarehouseOption ? 5 : 3} className="px-6 py-8 text-center text-slate-500 text-sm">
                 No hay registros creados.
               </td>
             </tr>

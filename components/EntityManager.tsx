@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { useEntityManager, EntityBase } from '../hooks/useEntityManager';
 import { EntityTable } from './organizationManager/EntityTable';
 import { EntityModal } from './organizationManager/EntityModal';
+import { Ciudad } from '../types';
 
 interface EntityManagerProps {
   title: string;
@@ -13,10 +14,11 @@ interface EntityManagerProps {
   onDelete: (id: number) => Promise<void>;
   onRefresh: () => void;
   withWarehouseOption?: boolean;
+  cities?: Ciudad[];
 }
 
 const EntityManager: React.FC<EntityManagerProps> = (props) => {
-  const { title, items, withWarehouseOption } = props;
+  const { title, items, withWarehouseOption, cities } = props;
   
   const { 
     isModalOpen, 
@@ -29,7 +31,7 @@ const EntityManager: React.FC<EntityManagerProps> = (props) => {
   } = useEntityManager(props);
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <p className="text-slate-600">Administra los {title.toLowerCase()}s disponibles en el sistema.</p>
         <button 
@@ -53,6 +55,7 @@ const EntityManager: React.FC<EntityManagerProps> = (props) => {
         title={title}
         editingItem={editingItem} 
         withWarehouseOption={withWarehouseOption}
+        cities={cities}
         onSubmit={handleSave} 
       />
     </div>

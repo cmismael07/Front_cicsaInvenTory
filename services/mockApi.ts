@@ -1,5 +1,5 @@
 
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia } from '../types';
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad } from '../types';
 import { liveApi } from './liveApi';
 
 // --- CONFIGURACIÓN DEL BACKEND ---
@@ -9,11 +9,17 @@ const USE_LIVE_API = false;
 
 // --- Mock Data Initialization ---
 
+let MOCK_CIUDADES: Ciudad[] = [
+  { id: 1, nombre: 'Guayaquil' },
+  { id: 2, nombre: 'Quito' },
+  { id: 3, nombre: 'Cuenca' }
+];
+
 let MOCK_DEPARTAMENTOS: Departamento[] = [
-  { id: 1, nombre: 'Tecnología (IT)', es_bodega: true },
-  { id: 2, nombre: 'Recursos Humanos', es_bodega: false },
-  { id: 3, nombre: 'Ventas', es_bodega: false },
-  { id: 4, nombre: 'Finanzas', es_bodega: false }
+  { id: 1, nombre: 'Tecnología (IT)', es_bodega: true, ciudad_id: 1, ciudad_nombre: 'Guayaquil' },
+  { id: 2, nombre: 'Recursos Humanos', es_bodega: false, ciudad_id: 2, ciudad_nombre: 'Quito' },
+  { id: 3, nombre: 'Ventas', es_bodega: false, ciudad_id: 1, ciudad_nombre: 'Guayaquil' },
+  { id: 4, nombre: 'Finanzas', es_bodega: false, ciudad_id: 3, ciudad_nombre: 'Cuenca' }
 ];
 
 let MOCK_PUESTOS: Puesto[] = [
@@ -102,15 +108,27 @@ export const api = {
   createDepartamento: async (data: any) => {
     await simulateDelay();
     const newId = MOCK_DEPARTAMENTOS.length + 1;
-    const newItem = { ...data, id: newId };
+    const ciudad = MOCK_CIUDADES.find(c => c.id === Number(data.ciudad_id));
+    const newItem = { 
+        ...data, 
+        id: newId,
+        ciudad_nombre: ciudad?.nombre
+    };
     MOCK_DEPARTAMENTOS.push(newItem);
     return newItem;
   },
   updateDepartamento: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_DEPARTAMENTOS.findIndex(d => d.id === id);
-    if (idx >= 0) MOCK_DEPARTAMENTOS[idx] = { ...MOCK_DEPARTAMENTOS[idx], ...data };
-    return MOCK_DEPARTAMENTOS[idx];
+    if (idx >= 0) {
+        const ciudad = data.ciudad_id ? MOCK_CIUDADES.find(c => c.id === Number(data.ciudad_id)) : null;
+        MOCK_DEPARTAMENTOS[idx] = { 
+            ...MOCK_DEPARTAMENTOS[idx], 
+            ...data,
+            ...(ciudad ? { ciudad_nombre: ciudad.nombre } : {}) 
+        };
+        return MOCK_DEPARTAMENTOS[idx];
+    }
   },
   deleteDepartamento: async (id: number) => {
     await simulateDelay();
@@ -149,6 +167,28 @@ export const api = {
     const idx = MOCK_PUESTOS.findIndex(d => d.id === id);
     if (idx >= 0) {
       MOCK_PUESTOS.splice(idx, 1);
+    }
+  },
+
+  getCiudades: async () => { await simulateDelay(); return [...MOCK_CIUDADES]; },
+  createCiudad: async (data: any) => {
+    await simulateDelay();
+    const newId = MOCK_CIUDADES.length + 1;
+    const newItem = { ...data, id: newId };
+    MOCK_CIUDADES.push(newItem);
+    return newItem;
+  },
+  updateCiudad: async (id: number, data: any) => {
+    await simulateDelay();
+    const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+    if (idx >= 0) MOCK_CIUDADES[idx] = { ...MOCK_CIUDADES[idx], ...data };
+    return MOCK_CIUDADES[idx];
+  },
+  deleteCiudad: async (id: number) => {
+    await simulateDelay();
+    const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+    if (idx >= 0) {
+      MOCK_CIUDADES.splice(idx, 1);
     }
   },
 

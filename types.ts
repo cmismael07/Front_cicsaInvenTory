@@ -17,9 +17,16 @@ export interface Departamento {
   id: number;
   nombre: string;
   es_bodega?: boolean; // Indica si el departamento funciona como almacén de IT
+  ciudad_id?: number; // Relación con Ciudad
+  ciudad_nombre?: string;
 }
 
 export interface Puesto {
+  id: number;
+  nombre: string;
+}
+
+export interface Ciudad {
   id: number;
   nombre: string;
 }

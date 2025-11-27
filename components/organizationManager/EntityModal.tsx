@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { Save, Warehouse } from 'lucide-react';
 import { EntityBase } from '../../hooks/useEntityManager';
+import { Ciudad } from '../../types';
 import Swal from 'sweetalert2';
 
 interface EntityModalProps {
@@ -11,6 +12,7 @@ interface EntityModalProps {
   title: string; // "Departamento" or "Puesto"
   editingItem: EntityBase | null;
   withWarehouseOption?: boolean;
+  cities?: Ciudad[];
   onSubmit: (data: any) => Promise<boolean>;
 }
 
@@ -20,17 +22,26 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   title, 
   editingItem, 
   withWarehouseOption = false, 
+  cities = [],
   onSubmit 
 }) => {
-  const [formData, setFormData] = useState({ nombre: '', es_bodega: false });
+  const [formData, setFormData] = useState<{nombre: string, es_bodega: boolean, ciudad_id: string}>({ 
+    nombre: '', 
+    es_bodega: false, 
+    ciudad_id: '' 
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       if (editingItem) {
-        setFormData({ nombre: editingItem.nombre, es_bodega: !!editingItem.es_bodega });
+        setFormData({ 
+          nombre: editingItem.nombre, 
+          es_bodega: !!editingItem.es_bodega,
+          ciudad_id: editingItem.ciudad_id ? String(editingItem.ciudad_id) : ''
+        });
       } else {
-        setFormData({ nombre: '', es_bodega: false });
+        setFormData({ nombre: '', es_bodega: false, ciudad_id: '' });
       }
     }
   }, [isOpen, editingItem]);
@@ -41,7 +52,10 @@ export const EntityModal: React.FC<EntityModalProps> = ({
 
     const dataToSend = {
       nombre: formData.nombre,
-      ...(withWarehouseOption ? { es_bodega: formData.es_bodega } : {})
+      ...(withWarehouseOption ? { 
+        es_bodega: formData.es_bodega,
+        ciudad_id: formData.ciudad_id ? Number(formData.ciudad_id) : undefined 
+      } : {})
     };
 
     setLoading(true);
@@ -71,6 +85,23 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             placeholder={`Ej. ${title === 'Departamento' ? 'Marketing' : 'Analista Sr.'}`}
           />
         </div>
+
+        {withWarehouseOption && cities.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>
+            <select 
+              required
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              value={formData.ciudad_id}
+              onChange={e => setFormData({...formData, ciudad_id: e.target.value})}
+            >
+              <option value="">Seleccione una ciudad...</option>
+              {cities.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {withWarehouseOption && (
             <div className="pt-2">
