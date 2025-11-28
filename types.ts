@@ -106,6 +106,7 @@ export interface HistorialMovimiento {
   fecha: string;
   usuario_responsable: string; 
   detalle: string;
+  archivo?: string; // Nombre del archivo de evidencia
 }
 
 export interface HistorialAsignacion {

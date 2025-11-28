@@ -140,7 +140,7 @@ export const useEquipment = () => {
         const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
         await equipmentService.markForDisposal(equipo.id, formData.observaciones, Number(formData.ubicacion_id), bodega?.nombre || 'Bodega IT');
       } else if (action === 'BAJA' && equipo) {
-        await equipmentService.dispose(equipo.id, formData.observaciones);
+        await equipmentService.dispose(equipo.id, formData.observaciones, formData.evidenceFile);
       } else if (action === 'TO_MAINTENANCE' && equipo) {
         await equipmentService.sendToMaintenance(equipo.id, formData.observaciones);
       }

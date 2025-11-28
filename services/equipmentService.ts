@@ -1,5 +1,4 @@
 
-
 import { api } from './mockApi';
 import { Equipo, TipoEquipo, Usuario, Departamento } from '../types';
 
@@ -14,7 +13,7 @@ export const equipmentService = {
     api.recepcionarEquipo(id, observaciones, ubicacionId, ubicacionNombre),
   markForDisposal: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string) =>
     api.marcarParaBaja(id, observaciones, ubicacionId, ubicacionNombre),
-  dispose: async (id: number, motivo: string) => api.bajaEquipo(id, motivo),
+  dispose: async (id: number, motivo: string, archivo?: File) => api.bajaEquipo(id, motivo, archivo),
   sendToMaintenance: async (id: number, motivo: string) => api.enviarAMantenimiento(id, motivo),
   // New helper to check email config logic directly if needed, or rely on API
   getEmailConfig: async () => api.getEmailConfig(),

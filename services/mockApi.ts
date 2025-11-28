@@ -460,11 +460,17 @@ export const api = {
     }
   },
 
-  bajaEquipo: async (id: number, motivo: string) => {
+  bajaEquipo: async (id: number, motivo: string, archivo?: File) => {
     await simulateDelay();
     const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
     if (idx >= 0) {
       MOCK_EQUIPOS[idx].estado = EstadoEquipo.BAJA;
+      
+      let detalleHistorial = `Motivo: ${motivo}`;
+      if (archivo) {
+          detalleHistorial += ` | Evidencia: ${archivo.name}`;
+      }
+
       MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
         equipo_id: id,
@@ -472,7 +478,8 @@ export const api = {
         tipo_accion: 'BAJA',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Motivo: ${motivo}`
+        detalle: detalleHistorial,
+        archivo: archivo ? archivo.name : undefined // Guardar referencia al archivo
       });
     }
   },
@@ -728,7 +735,7 @@ export const api = {
     // Filter pending/in-process details for this month
     return MOCK_DETALLES_PLAN.filter(d => 
         activePlanIds.includes(d.plan_id) && 
-        d.mes_programado === currentMonth &&
+        d.mes_programado === currentMonth && 
         d.estado !== EstadoPlan.REALIZADO
     );
   },

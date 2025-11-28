@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ReporteGarantia } from '../../types';
+import { ReporteGarantia, EstadoEquipo } from '../../types';
 import { reportService } from '../../services/reportService';
 import { AlertTriangle, ShieldCheck, Download, Printer } from 'lucide-react';
 import { downloadCSV } from '../../utils/csvExporter';
@@ -12,7 +12,9 @@ export const WarrantiesTab: React.FC = () => {
 
   useEffect(() => {
     reportService.getWarranties().then((data) => {
-        setGarantias(data.sort((a,b) => a.dias_restantes - b.dias_restantes));
+        // Filtramos para asegurar que no se muestren equipos dados de Baja
+        const activeWarranties = data.filter(w => w.equipo.estado !== EstadoEquipo.BAJA);
+        setGarantias(activeWarranties.sort((a,b) => a.dias_restantes - b.dias_restantes));
         setLoading(false);
     });
   }, []);

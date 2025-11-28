@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { DetallePlan, EstadoPlan, PlanMantenimiento } from '../../types';
-import { ChevronLeft, Save, GripVertical, CheckCircle, Clock, AlertCircle, Wrench } from 'lucide-react';
+import { ChevronLeft, Save, GripVertical, CheckCircle, Clock, AlertCircle, Wrench, Download, Printer } from 'lucide-react';
 import { MaintenanceExecutionModal } from './MaintenanceExecutionModal';
 import { maintenancePlanningService } from '../../services/maintenancePlanningService';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import { downloadCSV } from '../../utils/csvExporter';
+import { printCustomHTML } from '../../utils/documentGenerator';
 
 interface PlanningCalendarProps {
   plan: PlanMantenimiento;
@@ -44,8 +45,6 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
   // --- Drag & Drop Logic ---
 
   const handleDragStart = (e: React.DragEvent, item: DetallePlan) => {
-    // Only allow drag if plan is draft or user wants to reschedule pending items?
-    // Let's allow simple planning drag.
     setDraggedItem(item);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -84,9 +83,136 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
         await maintenancePlanningService.updateScheduleItem(draggedItem.id, targetMonth);
       } catch (error) {
         console.error("Failed to update schedule", error);
-        // Revert (omitted for brevity, would need comprehensive state management)
       }
     }
+  };
+
+  // --- Export Actions ---
+
+  const handleExportExcel = () => {
+    const flatData: any[] = [];
+    MONTH_NAMES.forEach((month, idx) => {
+        const items = schedule[idx + 1] || [];
+        items.forEach(task => {
+            flatData.push({
+                'Mes': month,
+                'Código': task.equipo_codigo,
+                'Tipo Equipo': task.equipo_tipo,
+                'Modelo': task.equipo_modelo,
+                'Ubicación': task.equipo_ubicacion,
+                'Estado': task.estado,
+                'Fecha Ejecución': task.fecha_ejecucion || '-',
+                'Técnico': task.tecnico_responsable || '-'
+            });
+        });
+    });
+    downloadCSV(flatData, `Plan_Mantenimiento_${plan.anio}_${plan.ciudad_nombre || 'General'}`);
+  };
+
+  const handleExportPDF = () => {
+    let html = `
+      <style>
+        @page { size: A4 landscape; margin: 1cm; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10px; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .header h1 { font-size: 18px; margin: 0; color: #0f172a; text-transform: uppercase; }
+        .header p { font-size: 12px; color: #64748b; margin: 5px 0 0 0; }
+        
+        /* Layout de cuadrícula similar a pantalla: 6 columnas x 2 filas */
+        .grid-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; row-gap: 15px; }
+        
+        .month-col { border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; overflow: hidden; break-inside: avoid; display: flex; flex-direction: column; }
+        .month-header { background: #f8fafc; padding: 6px; text-align: center; font-weight: 700; border-bottom: 1px solid #cbd5e1; font-size: 11px; text-transform: uppercase; color: #475569; }
+        .task-list { padding: 4px; flex: 1; min-height: 40px; }
+        
+        /* Estilos de tarjeta replicando la UI */
+        .task-card { 
+            padding: 5px; 
+            border: 1px solid; 
+            border-radius: 4px; 
+            margin-bottom: 4px; 
+            font-size: 9px; 
+            box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        }
+        
+        /* Colores de Estado */
+        .status-REALIZADO { background-color: #f0fdf4; border-color: #bbf7d0; opacity: 0.9; } /* bg-green-50 */
+        .status-EN_PROCESO { background-color: #fffbeb; border-color: #fde68a; } /* bg-amber-50 */
+        .status-PENDIENTE { background-color: #ffffff; border-color: #e2e8f0; } /* bg-white */
+        .status-RETRASADO { background-color: #fef2f2; border-color: #fecaca; }
+        
+        .task-code { font-weight: 700; color: #334155; font-size: 9px; display: flex; justify-content: space-between; align-items: center; }
+        .task-model { color: #475569; font-size: 8px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-loc { color: #94a3b8; font-size: 7px; margin-top: 2px; font-style: italic; display: flex; align-items: center; gap: 2px; }
+        
+        .status-icon { font-size: 9px; font-weight: bold; line-height: 1; }
+        .icon-ok { color: #16a34a; }
+        .icon-clock { color: #94a3b8; }
+        .icon-wrench { color: #d97706; }
+        .icon-alert { color: #dc2626; }
+
+        .summary { margin-top: 20px; font-size: 9px; color: #64748b; text-align: right; border-top: 1px solid #e2e8f0; padding-top: 5px; }
+      </style>
+      
+      <div class="header">
+         <h1>${plan.nombre}</h1>
+         <p>Planificación Anual ${plan.anio} - ${plan.ciudad_nombre || 'General'}</p>
+      </div>
+      
+      <div class="grid-container">
+    `;
+
+    let totalTasks = 0;
+
+    MONTH_NAMES.forEach((monthName, idx) => {
+        const monthNum = idx + 1;
+        const tasks = schedule[monthNum] || [];
+        totalTasks += tasks.length;
+        
+        html += `
+          <div class="month-col">
+             <div class="month-header">${monthName} <span style="font-weight:normal; color:#94a3b8;">(${tasks.length})</span></div>
+             <div class="task-list">
+        `;
+        
+        tasks.forEach(t => {
+            let statusClass = 'status-PENDIENTE';
+            let iconHtml = '<span class="status-icon icon-clock">●</span>'; 
+            
+            if (t.estado === EstadoPlan.REALIZADO) {
+                statusClass = 'status-REALIZADO';
+                iconHtml = '<span class="status-icon icon-ok">✓</span>';
+            } else if (t.estado === EstadoPlan.EN_PROCESO) {
+                statusClass = 'status-EN_PROCESO';
+                iconHtml = '<span class="status-icon icon-wrench">⚙</span>';
+            } else if (t.estado === EstadoPlan.RETRASADO) {
+                statusClass = 'status-RETRASADO';
+                iconHtml = '<span class="status-icon icon-alert">!</span>';
+            }
+
+            html += `
+              <div class="task-card ${statusClass}">
+                 <div class="task-code">
+                    ${t.equipo_codigo}
+                    ${iconHtml}
+                 </div>
+                 <div class="task-model">${t.equipo_modelo}</div>
+                 <div class="task-loc">📍 ${t.equipo_ubicacion}</div>
+              </div>
+            `;
+        });
+        
+        html += `
+             </div>
+          </div>
+        `;
+    });
+
+    html += `</div>
+      <div class="summary">Total Equipos Programados: <strong>${totalTasks}</strong> | Generado el ${new Date().toLocaleDateString()}</div>
+    `;
+    
+    printCustomHTML(html, `Plan Mantenimiento ${plan.anio}`);
   };
 
   // --- Actions ---
@@ -183,7 +309,7 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600">
             <ChevronLeft className="w-5 h-5" />
@@ -194,14 +320,30 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
           </div>
         </div>
         
-        {isNew && (
+        <div className="flex flex-wrap gap-2">
             <button 
-                onClick={handleSavePlan}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                onClick={handleExportExcel}
+                className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                title="Exportar listado a Excel"
             >
-                <Save className="w-4 h-4" /> Guardar Plan
+                <Download className="w-4 h-4" /> Excel
             </button>
-        )}
+            <button 
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                title="Imprimir vista de calendario"
+            >
+                <Printer className="w-4 h-4" /> PDF
+            </button>
+            {isNew && (
+                <button 
+                    onClick={handleSavePlan}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                    <Save className="w-4 h-4" /> Guardar Plan
+                </button>
+            )}
+        </div>
       </div>
 
       {/* Calendar Grid */}
@@ -233,6 +375,7 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
                                         ${task.estado === EstadoPlan.REALIZADO ? 'bg-green-50 border-green-200 opacity-75' : ''}
                                         ${task.estado === EstadoPlan.EN_PROCESO ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-300' : ''}
                                         ${task.estado === EstadoPlan.PENDIENTE ? 'bg-white border-slate-200 hover:border-blue-300' : ''}
+                                        ${task.estado === EstadoPlan.RETRASADO ? 'bg-red-50 border-red-200' : ''}
                                     `}
                                 >
                                     <div className="flex justify-between items-start mb-1">
