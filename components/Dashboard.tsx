@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { AlertTriangle, Box, CheckCircle, Wrench, Laptop } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -7,6 +8,7 @@ import { LicenseCard } from './dashboard/LicenseCard';
 import { StatusPieChart } from './dashboard/StatusPieChart';
 import { WarrantyChart } from './dashboard/WarrantyChart';
 import { EquipmentStackChart } from './dashboard/EquipmentStackChart';
+import { MaintenanceDueList } from './dashboard/MaintenanceDueList';
 
 const Dashboard: React.FC = () => {
   const { 
@@ -14,7 +16,8 @@ const Dashboard: React.FC = () => {
     groupedStats, 
     warrantyData, 
     licenseStats, 
-    equipmentBreakdown 
+    equipmentBreakdown,
+    pendingMaintenance
   } = useDashboardData();
 
   if (loading) {
@@ -81,6 +84,11 @@ const Dashboard: React.FC = () => {
         />
          
         <LicenseCard stats={licenseStats} />
+      </div>
+
+      {/* Maintenance List Row */}
+      <div className="grid grid-cols-1 gap-6">
+        <MaintenanceDueList tasks={pendingMaintenance} />
       </div>
 
       {/* Charts Section Row 1 */}

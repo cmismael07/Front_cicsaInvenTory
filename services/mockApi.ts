@@ -1,7 +1,6 @@
-
-
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento } from '../types';
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento, EmailConfig } from '../types';
 import { liveApi } from './liveApi';
+import Swal from 'sweetalert2';
 
 // --- CONFIGURACIÓN DEL BACKEND ---
 // Cambia esto a TRUE cuando tengas tu backend Laravel corriendo en localhost:8000
@@ -90,8 +89,63 @@ let MOCK_PLANES: PlanMantenimiento[] = [];
 let MOCK_DETALLES_PLAN: DetallePlan[] = [];
 let MOCK_EVIDENCIAS: EvidenciaMantenimiento[] = [];
 
+// --- Email Configuration ---
+let MOCK_EMAIL_CONFIG: EmailConfig = {
+    remitente: 'Sistema InvenTory <notificaciones@empresa.com>',
+    correos_copia: ['soporte@empresa.com'],
+    notificar_asignacion: true,
+    notificar_mantenimiento: true,
+    dias_anticipacion_alerta: 15,
+    smtp_host: 'smtp.office365.com',
+    smtp_port: '587'
+};
 
 const simulateDelay = () => new Promise(resolve => setTimeout(resolve, 500));
+
+// Helper: Send Notification Email (Simulated)
+const sendNotificationEmail = async (
+    targetUserId: number | undefined, 
+    subject: string, 
+    message: string,
+    eventType: 'asignacion' | 'mantenimiento',
+    attachmentName?: string
+) => {
+    // Check global switches
+    if (eventType === 'asignacion' && !MOCK_EMAIL_CONFIG.notificar_asignacion) return;
+    if (eventType === 'mantenimiento' && !MOCK_EMAIL_CONFIG.notificar_mantenimiento) return;
+
+    const recipients: string[] = [];
+    
+    // 1. Add Target User if exists
+    if (targetUserId) {
+        const user = MOCK_USERS.find(u => u.id === targetUserId);
+        if (user && user.correo) {
+            recipients.push(user.correo);
+        }
+    }
+
+    // 2. Add CCs
+    if (MOCK_EMAIL_CONFIG.correos_copia && MOCK_EMAIL_CONFIG.correos_copia.length > 0) {
+        recipients.push(...MOCK_EMAIL_CONFIG.correos_copia);
+    }
+    
+    // Filter empty
+    const uniqueRecipients = [...new Set(recipients.filter(r => r && r.trim() !== ''))];
+
+    if (uniqueRecipients.length > 0) {
+        console.log(`[EMAIL SIMULADO]
+        De: ${MOCK_EMAIL_CONFIG.remitente}
+        Para: ${uniqueRecipients.join(', ')}
+        Asunto: ${subject}
+        Mensaje: ${message}
+        Adjunto: ${attachmentName || 'Ninguno'}
+        -----------------------------------`);
+    } else {
+        console.warn("[EMAIL SIMULADO] No hay destinatarios configurados para enviar el correo.");
+    }
+};
+
+const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 // --- API Implementation ---
 
@@ -312,7 +366,7 @@ export const api = {
   },
 
   // Actions
-  asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string) => {
+  asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string, reporteHtml?: string) => {
     await simulateDelay();
     const equipoIdx = MOCK_EQUIPOS.findIndex(e => e.id === id);
     const usuario = MOCK_USERS.find(u => u.id === Number(usuarioId));
@@ -342,6 +396,7 @@ export const api = {
       });
 
       // Add Assignment History Record
+      // IMPORTANT: archivo_pdf inicial en undefined. No se marca como cargado hasta que se suba.
       MOCK_ASIGNACIONES.push({
         id: MOCK_ASIGNACIONES.length + 1,
         equipo_codigo: equipo.codigo_activo,
@@ -351,8 +406,23 @@ export const api = {
         fecha_inicio: new Date().toISOString().split('T')[0],
         fecha_fin: null,
         ubicacion: ubicacion,
-        archivo_pdf: `acta_${equipo.codigo_activo}.pdf` // Mock file
+        archivo_pdf: undefined 
       });
+      
+      // EMAIL TRIGGER
+      // Si se pasa HTML, se simula que es el adjunto, pero no afecta al archivo_pdf de la base de datos
+      let attachmentName = undefined;
+      if (reporteHtml && MOCK_EMAIL_CONFIG.notificar_asignacion) {
+          attachmentName = `acta_${equipo.codigo_activo}.pdf`;
+      }
+
+      await sendNotificationEmail(
+          usuario.id,
+          'Asignación de Equipo',
+          `Se le ha asignado el equipo ${equipo.tipo_nombre} ${equipo.marca} ${equipo.modelo} (Código: ${equipo.codigo_activo}).\nObservaciones: ${observaciones}.\n\nSe adjunta el acta de entrega.`,
+          'asignacion',
+          attachmentName
+      );
     }
   },
 
@@ -491,8 +561,6 @@ export const api = {
       });
 
       // 4. (Integration) Check if this equipment was in a Maintenance Plan and update task status
-      // CORRECCIÓN: Solo cerrar las tareas que están EN_PROCESO.
-      // Las tareas PENDIENTES (futuras) no deben tocarse.
       MOCK_DETALLES_PLAN.forEach(task => {
         if (task.equipo_id === equipoId && task.estado === EstadoPlan.EN_PROCESO) {
             task.estado = EstadoPlan.REALIZADO;
@@ -500,6 +568,28 @@ export const api = {
             task.tecnico_responsable = data.proveedor;
         }
       });
+      
+      // EMAIL TRIGGER
+      // Determine target user (only if returning to ACTIVE state and has a responsible user)
+      const targetUserId = (nuevoEstado === EstadoEquipo.ACTIVO) ? MOCK_EQUIPOS[idx].responsable_id : undefined;
+      
+      // Get attachment name
+      const attachmentName = archivo ? archivo.name : undefined;
+
+      const equipStr = `${MOCK_EQUIPOS[idx].tipo_nombre} ${MOCK_EQUIPOS[idx].marca} ${MOCK_EQUIPOS[idx].modelo}`;
+
+      await sendNotificationEmail(
+        targetUserId,
+        'Reporte de Mantenimiento Finalizado',
+        `El proceso de mantenimiento para el equipo ${equipStr} (Código: ${MOCK_EQUIPOS[idx].codigo_activo}) ha concluido.
+        \n\nDetalles del Servicio:
+        \n- Tipo: ${data.tipo}
+        \n- Proveedor: ${data.proveedor}
+        \n- Descripción: ${data.descripcion}
+        \n\nSe adjunta el informe técnico/orden de servicio.`,
+        'mantenimiento',
+        attachmentName
+      );
     }
   },
 
@@ -624,6 +714,25 @@ export const api = {
       return { plan, details };
   },
 
+  getPendingMaintenanceCurrentMonth: async () => {
+    await simulateDelay();
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentYear = today.getFullYear();
+    
+    // Get Active Plans for this year
+    const activePlanIds = MOCK_PLANES
+        .filter(p => p.anio === currentYear && p.estado === 'ACTIVO')
+        .map(p => p.id);
+        
+    // Filter pending/in-process details for this month
+    return MOCK_DETALLES_PLAN.filter(d => 
+        activePlanIds.includes(d.plan_id) && 
+        d.mes_programado === currentMonth &&
+        d.estado !== EstadoPlan.REALIZADO
+    );
+  },
+
   createMaintenancePlan: async (plan: PlanMantenimiento, details: DetallePlan[]) => {
       await simulateDelay();
       MOCK_PLANES.push(plan);
@@ -725,5 +834,111 @@ export const api = {
       }
       return [...MOCK_MANTENIMIENTOS].sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()); 
   },
-  getNotifications: async () => { await simulateDelay(); return [...MOCK_NOTIFICACIONES]; }
+  getNotifications: async () => { await simulateDelay(); return [...MOCK_NOTIFICACIONES]; },
+  
+  // --- Email Settings ---
+  getEmailConfig: async () => {
+    await simulateDelay();
+    return { ...MOCK_EMAIL_CONFIG };
+  },
+  saveEmailConfig: async (config: EmailConfig) => {
+      await simulateDelay();
+      MOCK_EMAIL_CONFIG = { ...config };
+      return MOCK_EMAIL_CONFIG;
+  },
+
+  // --- Automatic Alerts ---
+  verificarAlertasMantenimiento: async () => {
+    await simulateDelay();
+    const config = MOCK_EMAIL_CONFIG;
+    const diasAnticipacion = config.dias_anticipacion_alerta || 15;
+    
+    const today = new Date();
+    // Logic to determine next month
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+    
+    // Determine the "Next Scheduling Month"
+    let nextMonthIndex = currentMonth + 1; // 1-12 (Jan is 0 in JS date, but plans use 1-12)
+    let yearOfPlan = currentYear;
+    
+    if (nextMonthIndex > 11) {
+        nextMonthIndex = 0;
+        yearOfPlan++;
+    }
+    
+    // Target: 1st of next month
+    const startOfNextMonth = new Date(yearOfPlan, nextMonthIndex, 1);
+    
+    // Threshold date: startOfNextMonth - diasAnticipacion
+    const thresholdDate = new Date(startOfNextMonth);
+    thresholdDate.setDate(startOfNextMonth.getDate() - diasAnticipacion);
+    
+    // Check if we are past the threshold
+    if (today >= thresholdDate) {
+        const alertKey = `maintenance_alert_sent_${yearOfPlan}_${nextMonthIndex + 1}`; // 1-12
+        const alreadySent = localStorage.getItem(alertKey);
+        
+        if (!alreadySent) {
+            // Logic to find users and send emails
+            
+            // 1. Find Active Plans for that year
+            const activePlans = MOCK_PLANES.filter(p => p.anio === yearOfPlan && p.estado === 'ACTIVO');
+            const planIds = activePlans.map(p => p.id);
+            
+            if (planIds.length === 0) return; // No plans
+            
+            // 2. Find details for next month (nextMonthIndex + 1 because plan uses 1-based months)
+            const targetMonth = nextMonthIndex + 1;
+            const tasks = MOCK_DETALLES_PLAN.filter(d => 
+                planIds.includes(d.plan_id) && 
+                d.mes_programado === targetMonth && 
+                d.estado === EstadoPlan.PENDIENTE
+            );
+            
+            if (tasks.length === 0) return;
+            
+            // 3. Get Equipos to find owners
+            const equipIds = tasks.map(t => t.equipo_id);
+            const equipos = MOCK_EQUIPOS.filter(e => equipIds.includes(e.id) && e.responsable_id);
+            
+            // 4. Group by User
+            const userTasks: Record<number, string[]> = {}; // userId -> [equipo codes]
+            
+            equipos.forEach(eq => {
+                if (eq.responsable_id) {
+                    if (!userTasks[eq.responsable_id]) userTasks[eq.responsable_id] = [];
+                    userTasks[eq.responsable_id].push(`${eq.marca} ${eq.modelo} (${eq.codigo_activo})`);
+                }
+            });
+            
+            // 5. Send Emails
+            let emailsSentCount = 0;
+            for (const [userId, eqList] of Object.entries(userTasks)) {
+                await sendNotificationEmail(
+                    Number(userId),
+                    `Recordatorio: Mantenimiento Programado para ${MONTH_NAMES[targetMonth-1]}`,
+                    `Estimado usuario,\n\nSe le informa que los siguientes equipos bajo su responsabilidad tienen un mantenimiento programado para el próximo mes:\n\n${eqList.map(s => `- ${s}`).join('\n')}\n\nPor favor estar atento a las indicaciones del departamento técnico.`,
+                    'mantenimiento' 
+                );
+                emailsSentCount++;
+            }
+            
+            if (emailsSentCount > 0) {
+                // 6. Add System Notification
+                MOCK_NOTIFICACIONES.unshift({
+                    id: Date.now(),
+                    titulo: 'Alertas de Mantenimiento Enviadas',
+                    mensaje: `Se han enviado ${emailsSentCount} correos de recordatorio para el mantenimiento de ${MONTH_NAMES[targetMonth-1]} ${yearOfPlan}.`,
+                    fecha: new Date().toISOString().split('T')[0],
+                    leido: false,
+                    tipo: 'info'
+                });
+                
+                // Mark as sent
+                localStorage.setItem(alertKey, 'true');
+            }
+        }
+    }
+  }
 };

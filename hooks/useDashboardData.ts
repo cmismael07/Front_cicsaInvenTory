@@ -1,7 +1,8 @@
 
+
 import { useState, useEffect } from 'react';
 import { api } from '../services/mockApi';
-import { EstadoEquipo, ReporteGarantia } from '../types';
+import { EstadoEquipo, ReporteGarantia, DetallePlan } from '../types';
 
 export interface LicenseSummary {
   name: string;
@@ -32,6 +33,7 @@ export const useDashboardData = () => {
   const [warrantyData, setWarrantyData] = useState<ReporteGarantia[]>([]);
   const [licenseStats, setLicenseStats] = useState<LicenseSummary[]>([]);
   const [equipmentBreakdown, setEquipmentBreakdown] = useState<Record<string, Record<string, number>>>({});
+  const [pendingMaintenance, setPendingMaintenance] = useState<DetallePlan[]>([]);
   
   const [groupedStats, setGroupedStats] = useState<TypeGroupStats>({
     total: {},
@@ -46,13 +48,15 @@ export const useDashboardData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [warranties, licencias, equiposData] = await Promise.all([
+        const [warranties, licencias, equiposData, maintenancePending] = await Promise.all([
           api.getWarrantyReport(),
           api.getLicencias(),
-          api.getEquipos()
+          api.getEquipos(),
+          api.getPendingMaintenanceCurrentMonth()
         ]);
         
         setWarrantyData(warranties);
+        setPendingMaintenance(maintenancePending);
         
         // --- 1. Calcular Agrupaciones por Tipo para las Tarjetas (Excluyendo BAJA) ---
         const gStats: TypeGroupStats = {
@@ -144,6 +148,7 @@ export const useDashboardData = () => {
     groupedStats,
     warrantyData,
     licenseStats,
-    equipmentBreakdown
+    equipmentBreakdown,
+    pendingMaintenance
   };
 };

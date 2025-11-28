@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
@@ -10,6 +11,7 @@ import UserManager from './components/UserManager';
 import MaintenanceManager from './components/MaintenanceManager';
 import MaintenancePlanning from './components/MaintenancePlanning';
 import LicenseManager from './components/LicenseManager';
+import Settings from './components/Settings';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import { useAuth } from './hooks/useAuth';
@@ -34,6 +36,7 @@ const App: React.FC = () => {
           <Route path="/organizacion" element={<OrganizationManager />} />
           <Route path="/licencias" element={<LicenseManager />} />
           <Route path="/reportes" element={<Reports />} />
+          <Route path="/configuracion" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

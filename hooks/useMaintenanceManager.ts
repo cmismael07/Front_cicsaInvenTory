@@ -132,12 +132,24 @@ export const useMaintenanceManager = () => {
         reportFile
       );
       
+      // Preparar mensaje de éxito personalizado
+      const emailConfig = await api.getEmailConfig();
+      let successMessage = 'Mantenimiento registrado correctamente.';
+
+      if (emailConfig.notificar_mantenimiento) {
+          if (nuevoEstado === EstadoEquipo.ACTIVO && selectedEquipo.responsable_nombre) {
+              successMessage += ` Se ha enviado un correo con el detalle al usuario: ${selectedEquipo.responsable_nombre}.`;
+          } else if (emailConfig.correos_copia.length > 0) {
+              successMessage += ` Se ha notificado por correo a las cuentas configuradas (Soporte/Administración).`;
+          }
+      }
+
       closeModal();
       await loadData();
       
       Swal.fire({
-        title: 'Registrado',
-        text: 'Mantenimiento registrado correctamente.',
+        title: 'Mantenimiento Finalizado',
+        text: successMessage,
         icon: 'success',
         confirmButtonColor: '#2563eb'
       });

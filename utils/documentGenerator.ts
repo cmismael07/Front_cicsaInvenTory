@@ -4,20 +4,10 @@ import { Usuario, Equipo } from '../types';
 import Swal from 'sweetalert2';
 
 /**
- * Genera el documento de asignación (Carta Responsiva + Anexo 1)
+ * Genera el string HTML del documento de asignación (Carta Responsiva + Anexo 1)
+ * Sin imprimir, solo retorna el texto.
  */
-export const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => {
-  const printWindow = window.open('', '_blank', 'width=900,height=800');
-  if (!printWindow) {
-    Swal.fire({
-      title: 'Ventana Emergente Bloqueada',
-      text: 'Por favor permite las ventanas emergentes (pop-ups) para ver el documento de asignación.',
-      icon: 'warning',
-      confirmButtonColor: '#2563eb'
-    });
-    return;
-  }
-
+export const getAssignmentDocumentHTML = (usuario: Usuario, equipo: Equipo): string => {
   const today = new Date();
   const fechaAsignacion = `${today.getDate()} de ${today.toLocaleString('es-ES', { month: 'long' })} del ${today.getFullYear()}`;
   const fechaCorta = today.toLocaleDateString('es-ES');
@@ -25,7 +15,7 @@ export const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => 
   const serieCargador = equipo.serie_cargador || 'N/A';
   const observacionesEquipo = equipo.observaciones || 'Sin observaciones';
 
-  const htmlContent = `
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -183,12 +173,33 @@ export const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => 
             <div>${usuario.departamento_nombre || 'Departamento no asignado'}</div>
           </div>
         </div>
-
-        <script>window.onload = function() { setTimeout(function(){ window.print(); }, 800); }</script>
       </body>
     </html>
   `;
-  printWindow.document.write(htmlContent);
+};
+
+/**
+ * Genera el documento de asignación y abre la ventana de impresión
+ */
+export const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => {
+  const printWindow = window.open('', '_blank', 'width=900,height=800');
+  if (!printWindow) {
+    Swal.fire({
+      title: 'Ventana Emergente Bloqueada',
+      text: 'Por favor permite las ventanas emergentes (pop-ups) para ver el documento de asignación.',
+      icon: 'warning',
+      confirmButtonColor: '#2563eb'
+    });
+    return;
+  }
+
+  const htmlContent = getAssignmentDocumentHTML(usuario, equipo);
+  
+  // Agregar script de autoimpresión al HTML
+  const printScript = `<script>window.onload = function() { setTimeout(function(){ window.print(); }, 800); }</script>`;
+  const fullHtml = htmlContent.replace('</body>', `${printScript}</body>`);
+
+  printWindow.document.write(fullHtml);
   printWindow.document.close();
 };
 

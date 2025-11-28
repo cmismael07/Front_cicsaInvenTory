@@ -1,11 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { HistorialAsignacion, Usuario, Equipo, Licencia } from '../../types';
 import { reportService } from '../../services/reportService';
-import { Eye, User, Laptop, Key, Download, Search, FileText, Printer } from 'lucide-react';
+import { Eye, User, Laptop, Key, Download, Search, FileText, Printer, Upload } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { downloadCSV } from '../../utils/csvExporter';
 import { printCustomHTML } from '../../utils/documentGenerator';
+import Swal from 'sweetalert2';
 
 interface AssignmentsTabProps {
   usuarios: Usuario[];
@@ -26,6 +28,10 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
   // Filters
   const [filterUserId, setFilterUserId] = useState<string>('');
   const [fileToView, setFileToView] = useState<string | null>(null);
+
+  // Upload Logic
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadId, setUploadId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -49,6 +55,28 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUploadClick = (id: number) => {
+      setUploadId(id);
+      fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0] && uploadId) {
+          try {
+              setLoading(true);
+              await reportService.uploadAssignmentFile(uploadId, e.target.files[0]);
+              await loadData();
+              Swal.fire('Éxito', 'Documento cargado correctamente', 'success');
+          } catch (error) {
+              Swal.fire('Error', 'No se pudo cargar el documento', 'error');
+          } finally {
+              setLoading(false);
+              setUploadId(null);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+          }
+      }
   };
 
   // Procesar datos agrupados por usuario
@@ -305,7 +333,9 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
                                                             <Eye className="w-4 h-4"/>
                                                         </button>
                                                     ) : (
-                                                        <button className="text-slate-300 cursor-not-allowed p-1" title="Sin Documento"><FileText className="w-4 h-4"/></button>
+                                                        <button onClick={() => handleUploadClick(eq.id)} className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-50" title="Subir Documento Firmado">
+                                                            <Upload className="w-4 h-4"/>
+                                                        </button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -354,6 +384,8 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
             ))
         )}
       </div>
+
+      <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf,image/*" onChange={handleFileChange} />
 
       <Modal isOpen={!!fileToView} onClose={() => setFileToView(null)} title="Vista Previa de Documento">
          <div className="p-8 text-center bg-slate-50 rounded-lg">

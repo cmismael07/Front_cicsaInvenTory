@@ -205,3 +205,14 @@ export interface EvidenciaMantenimiento {
   tipo_archivo: 'imagen' | 'pdf';
   observaciones: string;
 }
+
+// --- Email Config Interface ---
+export interface EmailConfig {
+  remitente: string; // Nombre a mostrar
+  correos_copia: string[]; // Array de emails para CC
+  notificar_asignacion: boolean;
+  notificar_mantenimiento: boolean;
+  dias_anticipacion_alerta?: number; // Días antes del mes para avisar
+  smtp_host?: string; // Mock fields for realism
+  smtp_port?: string;
+}
