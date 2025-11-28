@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown, Key } from 'lucide-react';
+import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown, Key, CalendarClock } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Usuario, Notificacion } from '../types';
 import Swal from 'sweetalert2';
@@ -96,6 +96,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/planificacion" icon={CalendarClock} label="Planificación" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
         </nav>
@@ -124,6 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/planificacion" icon={CalendarClock} label="Planificación" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
         </nav>

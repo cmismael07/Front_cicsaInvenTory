@@ -1,5 +1,6 @@
 
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad } from '../types';
+
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento } from '../types';
 import { liveApi } from './liveApi';
 
 // --- CONFIGURACIÓN DEL BACKEND ---
@@ -40,19 +41,19 @@ let MOCK_USERS: Usuario[] = [
 ];
 
 let MOCK_TIPOS: TipoEquipo[] = [
-  { id: 1, nombre: 'Laptop', descripcion: 'Computadora portátil' },
-  { id: 2, nombre: 'Desktop', descripcion: 'Computadora de escritorio' },
-  { id: 3, nombre: 'Monitor', descripcion: 'Pantalla externa' },
-  { id: 4, nombre: 'Impresora', descripcion: 'Impresora láser o inyección' },
+  { id: 1, nombre: 'Laptop', descripcion: 'Computadora portátil', frecuencia_anual: 2 },
+  { id: 2, nombre: 'Desktop', descripcion: 'Computadora de escritorio', frecuencia_anual: 1 },
+  { id: 3, nombre: 'Monitor', descripcion: 'Pantalla externa', frecuencia_anual: 0 },
+  { id: 4, nombre: 'Impresora', descripcion: 'Impresora láser o inyección', frecuencia_anual: 1 },
 ];
 
 let MOCK_EQUIPOS: Equipo[] = [
-  { id: 1, codigo_activo: 'EQ-2023-001', numero_serie: 'SN123456', marca: 'Dell', modelo: 'Latitude 5420', tipo_equipo_id: 1, tipo_nombre: 'Laptop', serie_cargador: 'CH-999111', fecha_compra: '2023-01-15', valor_compra: 1200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', responsable_id: 3, responsable_nombre: 'Maria Ventas', observaciones: 'Asignado a ventas' },
-  { id: 2, codigo_activo: 'EQ-2021-045', numero_serie: 'SN987654', marca: 'HP', modelo: 'ProBook 450', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2021-03-10', valor_compra: 900, anos_garantia: 3, estado: EstadoEquipo.DISPONIBLE, ubicacion_id: 2, ubicacion_nombre: 'Bodega IT', observaciones: 'Reingresado, listo para asignar' },
-  { id: 3, codigo_activo: 'EQ-2020-012', numero_serie: 'SN456123', marca: 'Lenovo', modelo: 'ThinkCentre M720', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2020-05-20', valor_compra: 800, anos_garantia: 4, estado: EstadoEquipo.EN_MANTENIMIENTO, ubicacion_id: 3, ubicacion_nombre: 'Taller Externo', observaciones: 'Falla en disco duro' },
-  { id: 4, codigo_activo: 'EQ-2019-099', numero_serie: 'SN112233', marca: 'Dell', modelo: 'Optiplex 3060', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2019-02-01', valor_compra: 750, anos_garantia: 3, estado: EstadoEquipo.BAJA, ubicacion_id: 4, ubicacion_nombre: 'Almacén Bajas', observaciones: 'Obsoleto, pantalla azul' },
-  { id: 5, codigo_activo: 'EQ-2024-005', numero_serie: 'SN998877', marca: 'Apple', modelo: 'MacBook Air M2', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2024-02-20', valor_compra: 1400, anos_garantia: 1, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Dirección General', observaciones: '' },
-  { id: 6, codigo_activo: 'EQ-2020-055', numero_serie: 'SN554433', marca: 'HP', modelo: 'EliteDisplay', tipo_equipo_id: 3, tipo_nombre: 'Monitor', fecha_compra: '2020-06-15', valor_compra: 200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', observaciones: '' },
+  { id: 1, codigo_activo: 'EQ-2023-001', numero_serie: 'SN123456', marca: 'Dell', modelo: 'Latitude 5420', tipo_equipo_id: 1, tipo_nombre: 'Laptop', serie_cargador: 'CH-999111', fecha_compra: '2023-01-15', valor_compra: 1200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', responsable_id: 3, responsable_nombre: 'Maria Ventas', observaciones: 'Asignado a ventas', frecuencia_mantenimiento: FrecuenciaMantenimiento.SEMESTRAL },
+  { id: 2, codigo_activo: 'EQ-2021-045', numero_serie: 'SN987654', marca: 'HP', modelo: 'ProBook 450', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2021-03-10', valor_compra: 900, anos_garantia: 3, estado: EstadoEquipo.DISPONIBLE, ubicacion_id: 2, ubicacion_nombre: 'Bodega IT', observaciones: 'Reingresado, listo para asignar', frecuencia_mantenimiento: FrecuenciaMantenimiento.TRIMESTRAL },
+  { id: 3, codigo_activo: 'EQ-2020-012', numero_serie: 'SN456123', marca: 'Lenovo', modelo: 'ThinkCentre M720', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2020-05-20', valor_compra: 800, anos_garantia: 4, estado: EstadoEquipo.EN_MANTENIMIENTO, ubicacion_id: 3, ubicacion_nombre: 'Taller Externo', observaciones: 'Falla en disco duro', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
+  { id: 4, codigo_activo: 'EQ-2019-099', numero_serie: 'SN112233', marca: 'Dell', modelo: 'Optiplex 3060', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2019-02-01', valor_compra: 750, anos_garantia: 3, estado: EstadoEquipo.BAJA, ubicacion_id: 4, ubicacion_nombre: 'Almacén Bajas', observaciones: 'Obsoleto, pantalla azul', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
+  { id: 5, codigo_activo: 'EQ-2024-005', numero_serie: 'SN998877', marca: 'Apple', modelo: 'MacBook Air M2', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2024-02-20', valor_compra: 1400, anos_garantia: 1, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Dirección General', observaciones: '', frecuencia_mantenimiento: FrecuenciaMantenimiento.BIMESTRAL },
+  { id: 6, codigo_activo: 'EQ-2020-055', numero_serie: 'SN554433', marca: 'HP', modelo: 'EliteDisplay', tipo_equipo_id: 3, tipo_nombre: 'Monitor', fecha_compra: '2020-06-15', valor_compra: 200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', observaciones: '', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
 ];
 
 let MOCK_HISTORIAL: HistorialMovimiento[] = [
@@ -83,6 +84,12 @@ let MOCK_NOTIFICACIONES: Notificacion[] = [
   { id: 1, titulo: 'Garantía por vencer', mensaje: 'La garantía del equipo EQ-2021-045 vence en 15 días.', fecha: '2024-03-20', leido: false, tipo: 'warning' },
   { id: 2, titulo: 'Mantenimiento programado', mensaje: 'Mantenimiento general de servidores el 25 de Marzo.', fecha: '2024-03-18', leido: true, tipo: 'info' }
 ];
+
+// --- Mock Planning Data ---
+let MOCK_PLANES: PlanMantenimiento[] = [];
+let MOCK_DETALLES_PLAN: DetallePlan[] = [];
+let MOCK_EVIDENCIAS: EvidenciaMantenimiento[] = [];
+
 
 const simulateDelay = () => new Promise(resolve => setTimeout(resolve, 500));
 
@@ -238,14 +245,24 @@ export const api = {
   getTiposEquipo: async () => { await simulateDelay(); return [...MOCK_TIPOS]; },
   createTipoEquipo: async (data: any) => {
     await simulateDelay();
-    const newItem = { ...data, id: MOCK_TIPOS.length + 1 };
+    const newItem = { 
+      ...data, 
+      id: MOCK_TIPOS.length + 1,
+      frecuencia_anual: data.frecuencia_anual !== undefined ? Number(data.frecuencia_anual) : 1
+    };
     MOCK_TIPOS.push(newItem);
     return newItem;
   },
   updateTipoEquipo: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_TIPOS.findIndex(t => t.id === id);
-    if (idx >= 0) MOCK_TIPOS[idx] = { ...MOCK_TIPOS[idx], ...data };
+    if (idx >= 0) {
+      MOCK_TIPOS[idx] = { 
+        ...MOCK_TIPOS[idx], 
+        ...data,
+        frecuencia_anual: data.frecuencia_anual !== undefined ? Number(data.frecuencia_anual) : MOCK_TIPOS[idx].frecuencia_anual
+      };
+    }
     return MOCK_TIPOS[idx];
   },
   deleteTipoEquipo: async (id: number) => {
@@ -404,10 +421,6 @@ export const api = {
     await simulateDelay();
     const eq = MOCK_EQUIPOS.find(e => e.id === id);
     if (!eq) throw new Error("Equipo no encontrado");
-
-    // If assigned, close assignment or keep it? 
-    // Usually maintenance implies temporary removal. Let's keep assignment info but change status
-    // Or remove assignment. Let's assume removal for external repair.
     
     eq.estado = EstadoEquipo.EN_MANTENIMIENTO;
     eq.observaciones = motivo;
@@ -558,6 +571,70 @@ export const api = {
         return lic;
     }
     throw new Error("Licencia no encontrada");
+  },
+
+  // Maintenance Planning
+  getMaintenancePlans: async () => { await simulateDelay(); return [...MOCK_PLANES]; },
+  
+  createMaintenancePlan: async (plan: PlanMantenimiento, details: DetallePlan[]) => {
+    await simulateDelay();
+    MOCK_PLANES.push(plan);
+    MOCK_DETALLES_PLAN.push(...details);
+    return plan;
+  },
+
+  getPlanDetails: async (planId: number) => {
+    await simulateDelay();
+    const plan = MOCK_PLANES.find(p => p.id === planId);
+    const details = MOCK_DETALLES_PLAN.filter(d => d.plan_id === planId);
+    if (!plan) throw new Error("Plan no encontrado");
+    
+    // Attach evidence existence?
+    // In a real app, query evidences by plan_id
+    
+    return { plan, details };
+  },
+
+  updatePlanDetailMonth: async (detailId: number, newMonth: number) => {
+    await simulateDelay();
+    const detail = MOCK_DETALLES_PLAN.find(d => d.id === detailId);
+    if (detail) {
+      detail.mes_programado = newMonth;
+      return detail;
+    }
+    throw new Error("Detalle no encontrado");
+  },
+
+  registerMaintenanceExecution: async (detailId: number, data: { fecha: string; tecnico: string; observaciones: string; archivo?: File }) => {
+    await simulateDelay();
+    const detail = MOCK_DETALLES_PLAN.find(d => d.id === detailId);
+    if (!detail) throw new Error("Tarea no encontrada");
+
+    detail.estado = EstadoPlan.REALIZADO;
+    detail.fecha_ejecucion = data.fecha;
+    detail.tecnico_responsable = data.tecnico;
+    
+    // Save evidence
+    if (data.archivo) {
+      const fakeUrl = URL.createObjectURL(data.archivo); // Simulate URL
+      MOCK_EVIDENCIAS.push({
+        id: MOCK_EVIDENCIAS.length + 1,
+        detalle_plan_id: detail.id,
+        plan_id: detail.plan_id,
+        equipo_id: detail.equipo_id,
+        fecha_subida: new Date().toISOString(),
+        archivo_url: fakeUrl,
+        tipo_archivo: data.archivo.type.includes('image') ? 'imagen' : 'pdf',
+        observaciones: data.observaciones
+      });
+    }
+
+    return detail;
+  },
+
+  getEvidence: async (detailId: number) => {
+    await simulateDelay();
+    return MOCK_EVIDENCIAS.find(e => e.detalle_plan_id === detailId);
   },
 
   // Stats

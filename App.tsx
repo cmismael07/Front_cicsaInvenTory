@@ -8,6 +8,7 @@ import Reports from './components/Reports';
 import OrganizationManager from './components/OrganizationManager';
 import UserManager from './components/UserManager';
 import MaintenanceManager from './components/MaintenanceManager';
+import MaintenancePlanning from './components/MaintenancePlanning';
 import LicenseManager from './components/LicenseManager';
 import Login from './components/Login';
 import Layout from './components/Layout';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/equipos" element={<EquipmentList />} />
           <Route path="/mantenimiento" element={<MaintenanceManager />} />
+          <Route path="/planificacion" element={<MaintenancePlanning />} />
           <Route path="/tipos" element={<EquipmentTypes />} />
           <Route path="/usuarios" element={<UserManager currentUser={user} />} />
           <Route path="/organizacion" element={<OrganizationManager />} />
