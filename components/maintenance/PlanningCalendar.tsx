@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { DetallePlan, EstadoPlan, PlanMantenimiento } from '../../types';
-import { ChevronLeft, Save, GripVertical, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Save, GripVertical, CheckCircle, Clock, AlertCircle, Wrench } from 'lucide-react';
 import { MaintenanceExecutionModal } from './MaintenanceExecutionModal';
 import { maintenancePlanningService } from '../../services/maintenancePlanningService';
 import Swal from 'sweetalert2';
+import { useNavigate } from 'react-router-dom';
 
 interface PlanningCalendarProps {
   plan: PlanMantenimiento;
@@ -22,6 +23,7 @@ const MONTH_NAMES = [
 export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initialDetails, isNew, onSave, onBack }) => {
   const [schedule, setSchedule] = useState<Record<number, DetallePlan[]>>({});
   const [draggedItem, setDraggedItem] = useState<DetallePlan | null>(null);
+  const navigate = useNavigate();
   
   // Execution Modal
   const [executionTask, setExecutionTask] = useState<DetallePlan | null>(null);
@@ -97,9 +99,60 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
     }
   };
 
-  const openExecution = (task: DetallePlan) => {
-    if (task.estado === EstadoPlan.REALIZADO) return;
-    setExecutionTask(task);
+  const handleTaskClick = async (task: DetallePlan) => {
+    if (isNew) return; // Editing draft, no action
+    
+    if (task.estado === EstadoPlan.REALIZADO) {
+        Swal.fire('Mantenimiento Realizado', 'Esta tarea ya ha sido completada.', 'success');
+        return;
+    }
+    
+    if (task.estado === EstadoPlan.EN_PROCESO) {
+         Swal.fire('En Proceso', 'Este equipo ya se encuentra en el taller.', 'info');
+         return;
+    }
+
+    const result = await Swal.fire({
+        title: 'Iniciar Mantenimiento',
+        text: `¿Desea enviar el equipo ${task.equipo_codigo} a mantenimiento? Se marcará como "En Proceso".`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Sí, enviar a taller',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await maintenancePlanningService.sendToMaintenance(task.id, "Mantenimiento Programado");
+            
+            // Update local state to show 'EN_PROCESO'
+            setSchedule(prev => {
+                const monthList = prev[task.mes_programado];
+                const updatedList = monthList.map(t => 
+                    t.id === task.id ? { ...t, estado: EstadoPlan.EN_PROCESO } : t
+                );
+                return { ...prev, [task.mes_programado]: updatedList };
+            });
+
+            const navResult = await Swal.fire({
+                title: 'Enviado',
+                text: 'El equipo ha sido enviado a la cola de mantenimiento. ¿Desea ir a la gestión de mantenimientos ahora?',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Ir a Mantenimientos',
+                cancelButtonText: 'Permanecer aquí'
+            });
+
+            if (navResult.isConfirmed) {
+                navigate('/mantenimiento');
+            }
+
+        } catch (e: any) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    }
   };
 
   const refreshTask = async () => {
@@ -121,6 +174,7 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
   const getStatusIcon = (status: EstadoPlan) => {
       switch(status) {
           case EstadoPlan.REALIZADO: return <CheckCircle className="w-4 h-4 text-green-600" />;
+          case EstadoPlan.EN_PROCESO: return <Wrench className="w-4 h-4 text-amber-500 animate-pulse" />;
           case EstadoPlan.PENDIENTE: return <Clock className="w-4 h-4 text-slate-400" />;
           case EstadoPlan.RETRASADO: return <AlertCircle className="w-4 h-4 text-red-500" />;
           default: return null;
@@ -173,10 +227,12 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
                                     key={task.id}
                                     draggable={task.estado === EstadoPlan.PENDIENTE}
                                     onDragStart={(e) => handleDragStart(e, task)}
-                                    onClick={() => !isNew && openExecution(task)}
+                                    onClick={() => handleTaskClick(task)}
                                     className={`
                                         p-2 rounded border text-xs shadow-sm cursor-pointer hover:shadow-md transition-all relative group
-                                        ${task.estado === EstadoPlan.REALIZADO ? 'bg-green-50 border-green-200 opacity-75' : 'bg-white border-slate-200 hover:border-blue-300'}
+                                        ${task.estado === EstadoPlan.REALIZADO ? 'bg-green-50 border-green-200 opacity-75' : ''}
+                                        ${task.estado === EstadoPlan.EN_PROCESO ? 'bg-amber-50 border-amber-200 ring-1 ring-amber-300' : ''}
+                                        ${task.estado === EstadoPlan.PENDIENTE ? 'bg-white border-slate-200 hover:border-blue-300' : ''}
                                     `}
                                 >
                                     <div className="flex justify-between items-start mb-1">

@@ -1,4 +1,5 @@
 
+
 import { Usuario, Equipo } from '../types';
 import Swal from 'sweetalert2';
 
@@ -189,6 +190,216 @@ export const generateAssignmentDocument = (usuario: Usuario, equipo: Equipo) => 
   `;
   printWindow.document.write(htmlContent);
   printWindow.document.close();
+};
+
+/**
+ * Genera la Orden de Servicio (Mantenimiento)
+ */
+export const generateServiceOrder = (
+    equipo: Equipo, 
+    formData: { tipo: string, proveedor: string, descripcion: string, costo: number }
+) => {
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      Swal.fire('Ventana Bloqueada', 'Habilita pop-ups.', 'warning');
+      return;
+    }
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('es-ES');
+    const isCorrective = formData.tipo === 'Correctivo';
+    
+    // Checkmarks
+    const chkNormal = '☐';
+    const chkUrgente = '☐'; // Could be logic driven
+    const chkInterno = '☐';
+    const chkExterno = '☑'; // Assuming provider implies external often, but logic can vary
+    const chkCorr = isCorrective ? '☑' : '☐';
+    const chkPrev = !isCorrective ? '☑' : '☐';
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Orden de Servicio</title>
+        <style>
+          @page { size: A4 portrait; margin: 1cm; }
+          body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; color: #000; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+          td, th { border: 2px solid #000; padding: 3px 5px; vertical-align: middle; }
+          .no-border { border: none !important; }
+          .bold { font-weight: bold; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .header-title { font-size: 16px; font-weight: bold; text-align: center; border: none; }
+          
+          /* Header Layout */
+          .header-container { display: flex; border: 2px solid #000; margin-bottom: 2px; }
+          .logo-box { width: 150px; padding: 5px; border-right: 2px solid #000; display: flex; align-items: center; justify-content: center; }
+          .title-box { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; }
+          
+          .info-table td { border: none; padding: 2px 5px; }
+          .info-section { border: 2px solid #000; padding: 2px; margin-bottom: 2px; }
+          
+          .section-header { background-color: #ddd; font-weight: bold; text-align: center; padding: 2px; border: 2px solid #000; border-bottom: none; }
+          
+          .input-line { border-bottom: 1px solid #000; display: inline-block; min-width: 50px; }
+          
+          .grid-table th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+          .grid-table td { height: 15px; }
+          
+          .blue-header { background-color: #3b82f6; color: white; font-weight: bold; text-align: center; border: 1px solid #000; }
+          .blue-row td { border: 1px solid #000; }
+          
+          .footer-section { margin-top: 10px; border: 2px solid #000; padding: 5px; min-height: 80px; }
+          .signatures { display: flex; justify-content: space-around; margin-top: 40px; margin-bottom: 10px; }
+          .sig-box { text-align: center; width: 40%; }
+          .sig-line { border-top: 2px solid #000; margin-top: 30px; }
+          
+          .fr-code { font-size: 8px; text-align: right; margin-top: 5px; }
+        </style>
+      </head>
+      <body>
+        
+        <!-- Header -->
+        <div class="header-container">
+            <div class="logo-box">
+                <img src="/logoAnexoCarso.png" alt="CARSO" style="max-width:100%;" />
+            </div>
+            <div class="title-box">Orden de Servicio</div>
+        </div>
+
+        <!-- Info Section 1 -->
+        <div class="info-section">
+            <table class="no-border" style="border: none;">
+                <tr>
+                    <td class="no-border" style="width: 15%;"><strong>Area / Depto.:</strong></td>
+                    <td class="no-border" style="width: 35%; border-bottom: 1px solid #000 !important;">${equipo.ubicacion_nombre || ''}</td>
+                    <td class="no-border" style="width: 10%;"><strong>Fecha:</strong></td>
+                    <td class="no-border" style="width: 40%; border-bottom: 1px solid #000 !important;">${dateStr}</td>
+                </tr>
+                <tr>
+                   <td class="no-border"><strong>Prioridad:</strong></td>
+                   <td class="no-border" colspan="3">
+                        Normal ${chkNormal} &nbsp;&nbsp; Urgente ${chkUrgente}
+                   </td>
+                </tr>
+                <tr>
+                    <td class="no-border"><strong>Maquina o Equipo Afectado:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important;">${equipo.tipo_nombre} ${equipo.marca} ${equipo.modelo} (${equipo.codigo_activo})</td>
+                    <td class="no-border"><strong>Km / Horómetro:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important;"></td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Description -->
+        <div class="info-section" style="min-height: 80px;">
+             <table class="no-border" style="border: none;">
+                <tr>
+                    <td class="no-border" style="width: 25%;"><strong>Descripción del problema o falla:</strong></td>
+                    <td class="no-border" style="width: 45%;"></td>
+                    <td class="no-border" style="width: 10%; text-align: right;"><strong>No. Orden:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important; width: 20%;">${Math.floor(Math.random() * 10000)}</td>
+                </tr>
+             </table>
+             <div style="padding: 5px;">${formData.descripcion}</div>
+             <br><br>
+             <div style="text-align: right; padding-right: 10px;"><strong>Solicitado por:</strong> ${equipo.responsable_nombre || 'N/A'}</div>
+        </div>
+
+        <!-- Maint Type -->
+        <div class="info-section">
+            <table class="no-border" style="border: none;">
+                <tr>
+                    <td class="no-border" style="width: 15%;"><strong>Mantenimiento:</strong></td>
+                    <td class="no-border" style="width: 35%;">Interno ${chkInterno} &nbsp;&nbsp; Externo ${chkExterno}</td>
+                    <td class="no-border" style="width: 15%;"><strong>Servicio:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important;">${formData.proveedor}</td>
+                </tr>
+                <tr>
+                    <td class="no-border"></td>
+                    <td class="no-border"></td>
+                    <td class="no-border"><strong>Fecha de inicio:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important;">${dateStr}</td>
+                </tr>
+                <tr>
+                    <td class="no-border"><strong>Tipo de mtto:</strong></td>
+                    <td class="no-border">Correctivo ${chkCorr} &nbsp;&nbsp; Preventivo ${chkPrev}</td>
+                    <td class="no-border"><strong>Asignado a:</strong></td>
+                    <td class="no-border" style="border-bottom: 1px solid #000 !important;">CHRISTIAN CORDERO</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Trabajos Efectuados -->
+        <table class="grid-table" style="margin-top: 2px;">
+            <tr>
+                <th style="width: 80%;">Trabajos efectuados:</th>
+                <th style="width: 10%;">Cantidad</th>
+                <th style="width: 10%;">Total</th>
+            </tr>
+            <!-- Rows -->
+            ${Array.from({length: 8}).map((_, i) => `
+            <tr>
+                <td>${i === 0 ? formData.descripcion : ''}</td>
+                <td></td>
+                <td></td>
+            </tr>
+            `).join('')}
+             <tr>
+                <td style="border: 2px solid #000; font-weight: bold;">Fecha de Termino:</td>
+                <td style="border: 2px solid #000; font-weight: bold;">Total</td>
+                <td style="border: 2px solid #000;">${formData.costo > 0 ? formData.costo.toFixed(2) : '0'}</td>
+            </tr>
+        </table>
+
+        <!-- Materiales -->
+        <table class="grid-table blue-row" style="margin-top: 2px;">
+            <tr>
+                <th class="blue-header" style="width: 5%;">No</th>
+                <th class="blue-header" style="width: 45%;">Materiales utilizados</th>
+                <th class="blue-header" style="width: 50%;">Observaciones</th>
+            </tr>
+            ${Array.from({length: 10}).map((_, i) => `
+            <tr>
+                <td style="text-align: center;">${i + 1}</td>
+                <td></td>
+                <td></td>
+            </tr>
+            `).join('')}
+        </table>
+
+        <!-- Footer -->
+        <div class="footer-section">
+            <strong>Datos del Proveedor</strong>
+            <br><br>
+            ${formData.proveedor}
+        </div>
+
+        <div style="margin-top: 5px; font-size: 9px; text-align: center;">
+            En caso de que el equipo o maquinaría presente algun tipo de falla, deberá notificarlo al responsable de mantenimiento para verificar las condiciones a seguir.
+        </div>
+
+        <div class="signatures">
+            <div class="sig-box">
+                <strong>Vo. Bo. Solicitante</strong>
+                <div class="sig-line"></div>
+            </div>
+            <div class="sig-box">
+                <strong>Autoriza</strong>
+                <div class="sig-line"></div>
+            </div>
+        </div>
+        
+        <div class="fr-code">FR-MT-03 Rev.01</div>
+
+        <script>window.onload = function() { setTimeout(function(){ window.print(); }, 800); }</script>
+      </body>
+    </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 };
 
 /**

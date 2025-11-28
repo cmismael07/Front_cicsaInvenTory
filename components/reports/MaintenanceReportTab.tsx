@@ -3,13 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { RegistroMantenimiento } from '../../types';
 import { reportService } from '../../services/reportService';
 import { formatCurrency } from '../../utils/formatters';
-import { Wrench, Download, Printer } from 'lucide-react';
+import { Wrench, Download, Printer, Eye, FileText, Search } from 'lucide-react';
 import { downloadCSV } from '../../utils/csvExporter';
 import { printCustomHTML } from '../../utils/documentGenerator';
+import { Modal } from '../common/Modal';
 
 export const MaintenanceReportTab: React.FC = () => {
   const [registros, setRegistros] = useState<RegistroMantenimiento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fileToView, setFileToView] = useState<string | null>(null);
+  const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
     reportService.getMaintenance().then((data) => {
@@ -18,16 +21,28 @@ export const MaintenanceReportTab: React.FC = () => {
     });
   }, []);
 
-  const totalCost = registros.reduce((acc, curr) => acc + curr.costo, 0);
+  // Lógica de filtrado
+  const filteredRegistros = registros.filter(reg => {
+      if (!filterText) return true;
+      const searchLower = filterText.toLowerCase();
+      return (
+          reg.equipo_codigo.toLowerCase().includes(searchLower) ||
+          reg.equipo_modelo.toLowerCase().includes(searchLower) ||
+          reg.proveedor.toLowerCase().includes(searchLower)
+      );
+  });
+
+  const totalCost = filteredRegistros.reduce((acc, curr) => acc + curr.costo, 0);
 
   const prepareExportData = () => {
-    return registros.map(reg => ({
+    return filteredRegistros.map(reg => ({
       'Fecha': reg.fecha,
       'Equipo': `${reg.equipo_codigo} - ${reg.equipo_modelo}`,
       'Tipo Mantenimiento': reg.tipo_mantenimiento,
       'Proveedor': reg.proveedor,
       'Costo': formatCurrency(reg.costo),
-      'Detalle Trabajo': reg.descripcion
+      'Detalle Trabajo': reg.descripcion,
+      'Archivo Orden': reg.archivo_orden || 'No adjunto'
     }));
   };
 
@@ -60,7 +75,7 @@ export const MaintenanceReportTab: React.FC = () => {
       <div class="summary-row">
           <div class="summary-card bg-blue">
               <div class="card-title text-blue">Total Mantenimientos</div>
-              <div class="card-value text-blue">${registros.length}</div>
+              <div class="card-value text-blue">${filteredRegistros.length}</div>
           </div>
           <div class="summary-card bg-amber">
               <div class="card-title text-amber">Costo Total Acumulado</div>
@@ -69,8 +84,8 @@ export const MaintenanceReportTab: React.FC = () => {
       </div>
     `;
 
-    if (registros.length === 0) {
-       htmlContent += `<div style="text-align:center; padding: 30px; color: #94a3b8; font-style: italic;">No hay registros de mantenimiento.</div>`;
+    if (filteredRegistros.length === 0) {
+       htmlContent += `<div style="text-align:center; padding: 30px; color: #94a3b8; font-style: italic;">No hay registros de mantenimiento con los filtros actuales.</div>`;
     } else {
        htmlContent += `
         <table>
@@ -87,7 +102,7 @@ export const MaintenanceReportTab: React.FC = () => {
             <tbody>
        `;
 
-       registros.forEach(reg => {
+       filteredRegistros.forEach(reg => {
            const badgeClass = reg.tipo_mantenimiento === 'Correctivo' ? 'badge-correctivo' : 'badge-preventivo';
            htmlContent += `
             <tr>
@@ -115,29 +130,56 @@ export const MaintenanceReportTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <p className="text-sm text-blue-600 font-medium">Total Mantenimientos</p>
-                <p className="text-2xl font-bold text-blue-800">{registros.length}</p>
+        {/* Toolbar: Search and Exports */}
+        <div className="p-4 bg-slate-50 border rounded-lg flex flex-col md:flex-row gap-4 items-end justify-between">
+            <div className="w-full md:w-1/2">
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+                    <Search className="w-3 h-3" /> Buscar Equipo
+                </label>
+                <input 
+                    type="text"
+                    placeholder="Buscar por código, modelo o proveedor..."
+                    className="w-full p-2 border border-slate-300 rounded text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filterText}
+                    onChange={e => setFilterText(e.target.value)}
+                />
             </div>
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                <p className="text-sm text-amber-600 font-medium">Costo Total Acumulado</p>
-                <p className="text-2xl font-bold text-amber-800">{formatCurrency(totalCost)}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex items-center justify-center gap-2">
+            
+            <div className="flex gap-2">
                 <button 
                     onClick={() => downloadCSV(prepareExportData(), 'Reporte_Mantenimiento')}
-                    className="flex items-center gap-2 bg-white border border-slate-300 shadow-sm px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm"
+                    className="flex items-center gap-2 bg-white border border-slate-300 shadow-sm px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
                 >
                     <Download className="w-4 h-4" /> Excel
                 </button>
                 <button 
                     onClick={handlePrintPDF}
-                    className="flex items-center gap-2 bg-white border border-slate-300 shadow-sm px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm"
+                    className="flex items-center gap-2 bg-white border border-slate-300 shadow-sm px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
                 >
                     <Printer className="w-4 h-4" /> PDF
                 </button>
+            </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
+                <div>
+                    <p className="text-sm text-blue-600 font-medium">Total Registros</p>
+                    <p className="text-2xl font-bold text-blue-800">{filteredRegistros.length}</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full text-blue-600">
+                    <Wrench className="w-6 h-6" />
+                </div>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 flex justify-between items-center">
+                <div>
+                    <p className="text-sm text-amber-600 font-medium">Costo Acumulado</p>
+                    <p className="text-2xl font-bold text-amber-800">{formatCurrency(totalCost)}</p>
+                </div>
+                <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                    <span className="text-xl font-bold">$</span>
+                </div>
             </div>
         </div>
 
@@ -151,12 +193,13 @@ export const MaintenanceReportTab: React.FC = () => {
                         <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Proveedor</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Costo</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Trabajo Realizado</th>
+                        <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase">Doc</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
                     {loading ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-slate-500">Cargando...</td></tr>
-                    ) : registros.map(reg => (
+                        <tr><td colSpan={7} className="p-8 text-center text-slate-500">Cargando...</td></tr>
+                    ) : filteredRegistros.map(reg => (
                         <tr key={reg.id} className="hover:bg-slate-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{reg.fecha}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -171,14 +214,46 @@ export const MaintenanceReportTab: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{reg.proveedor}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">{formatCurrency(reg.costo)}</td>
                             <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate" title={reg.descripcion}>{reg.descripcion}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                {reg.archivo_orden ? (
+                                    <button 
+                                        onClick={() => setFileToView(reg.archivo_orden!)}
+                                        className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors"
+                                        title="Ver Orden de Servicio"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <span className="text-slate-300 cursor-not-allowed inline-block p-1" title="Sin archivo adjunto">
+                                        <FileText className="w-4 h-4" />
+                                    </span>
+                                )}
+                            </td>
                         </tr>
                     ))}
-                    {!loading && registros.length === 0 && (
-                        <tr><td colSpan={6} className="p-8 text-center text-slate-500">No hay registros de mantenimiento.</td></tr>
+                    {!loading && filteredRegistros.length === 0 && (
+                        <tr><td colSpan={7} className="p-8 text-center text-slate-500">No hay registros que coincidan con la búsqueda.</td></tr>
                     )}
                 </tbody>
             </table>
         </div>
+
+        {/* Modal para ver archivo */}
+        <Modal isOpen={!!fileToView} onClose={() => setFileToView(null)} title="Orden de Servicio Firmada">
+             <div className="p-8 text-center bg-slate-50 rounded-lg">
+                 <div className="mb-4 text-slate-400">Simulación de Visor PDF</div>
+                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 rounded-lg bg-white">
+                     <FileText className="w-12 h-12 text-red-500 mb-2" />
+                     <p className="font-mono text-sm text-slate-700 font-medium break-all">{fileToView}</p>
+                     <p className="text-xs text-slate-400 mt-2">En producción, aquí se mostraría el PDF embebido.</p>
+                 </div>
+                 <div className="mt-6 flex justify-center">
+                    <button onClick={() => setFileToView(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300 transition-colors">
+                        Cerrar Visor
+                    </button>
+                 </div>
+             </div>
+        </Modal>
     </div>
   );
 };

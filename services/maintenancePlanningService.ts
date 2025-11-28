@@ -17,7 +17,7 @@ export const maintenancePlanningService = {
   },
 
   // Generate a new plan (In memory, then save)
-  generatePlan: async (year: number, equipos: Equipo[]) => {
+  generatePlan: async (year: number, equipos: Equipo[], cityId: number, cityName: string) => {
     // 1. Fetch Types to determine frequency
     const tipos = await api.getTiposEquipo();
 
@@ -26,10 +26,12 @@ export const maintenancePlanningService = {
     const planHeader: PlanMantenimiento = {
       id: newPlanId,
       anio: year,
-      nombre: `Plan Maestro ${year}`,
+      nombre: `Plan Maestro ${year} - ${cityName}`,
       creado_por: 'Admin', // In real app, get current user
       fecha_creacion: new Date().toISOString().split('T')[0],
-      estado: 'ACTIVO'
+      estado: 'ACTIVO',
+      ciudad_id: cityId,
+      ciudad_nombre: cityName
     };
 
     // 3. Run Algorithm with types
@@ -64,5 +66,10 @@ export const maintenancePlanningService = {
   // Get evidence for a task
   getEvidence: async (detailId: number) => {
     return api.getEvidence(detailId);
+  },
+
+  // Send equipment to maintenance workflow
+  sendToMaintenance: async (detailId: number, motivo: string) => {
+    return api.iniciarMantenimientoDesdePlan(detailId, motivo);
   }
 };

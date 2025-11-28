@@ -4,6 +4,7 @@ import { PlanningConfig } from './maintenance/PlanningConfig';
 import { PlanningCalendar } from './maintenance/PlanningCalendar';
 import { PlanMantenimiento, DetallePlan, Equipo } from '../types';
 import { maintenancePlanningService } from '../services/maintenancePlanningService';
+import { api } from '../services/mockApi';
 import Swal from 'sweetalert2';
 
 const MaintenancePlanning: React.FC = () => {
@@ -12,9 +13,40 @@ const MaintenancePlanning: React.FC = () => {
   const [planDetails, setPlanDetails] = useState<DetallePlan[]>([]);
   const [isNewPlan, setIsNewPlan] = useState(false);
 
-  const handleGeneratePlan = async (year: number, equipos: Equipo[]) => {
+  const handleGeneratePlan = async (year: number, cityId: number, cityName: string) => {
     try {
-        const generated = await maintenancePlanningService.generatePlan(year, equipos);
+        // 1. Fetch data
+        const [allEquipos, departamentos] = await Promise.all([
+          api.getEquipos(),
+          api.getDepartamentos()
+        ]);
+        
+        // 2. Filter Equipment by City
+        // First, find which departments belong to the selected city
+        const cityDeptIds = departamentos
+            .filter(d => d.ciudad_id === cityId)
+            .map(d => d.id);
+
+        if (cityDeptIds.length === 0) {
+            Swal.fire('Atención', `No hay departamentos registrados en ${cityName}.`, 'warning');
+            return;
+        }
+
+        // Then filter equipment that are located in those departments
+        const filteredEquipos = allEquipos.filter(e => {
+            const isActive = e.estado !== 'Baja' && e.estado !== 'Para Baja';
+            const isInCity = cityDeptIds.includes(e.ubicacion_id);
+            return isActive && isInCity;
+        });
+
+        if (filteredEquipos.length === 0) {
+            Swal.fire('Sin Equipos', `No se encontraron equipos activos en ${cityName} para generar un plan.`, 'info');
+            return;
+        }
+
+        // 3. Generate Plan
+        const generated = await maintenancePlanningService.generatePlan(year, filteredEquipos, cityId, cityName);
+        
         setCurrentPlan(generated.header);
         setPlanDetails(generated.details);
         setIsNewPlan(true);
@@ -38,12 +70,26 @@ const MaintenancePlanning: React.FC = () => {
 
   const handleSavePlan = async (details: DetallePlan[]) => {
       if (!currentPlan) return;
-      try {
-          await maintenancePlanningService.savePlan(currentPlan, details);
-          Swal.fire('Éxito', 'Plan guardado correctamente', 'success');
-          setView('CONFIG'); // Go back to list
-      } catch (e: any) {
-          Swal.fire('Error', 'Error al guardar el plan', 'error');
+
+      const result = await Swal.fire({
+          title: '¿Guardar Plan?',
+          text: `Se registrará el plan "${currentPlan.nombre}" con ${details.length} tareas programadas.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#2563eb',
+          cancelButtonColor: '#64748b',
+          confirmButtonText: 'Sí, guardar plan',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (result.isConfirmed) {
+          try {
+              await maintenancePlanningService.savePlan(currentPlan, details);
+              Swal.fire('Éxito', 'Plan guardado correctamente', 'success');
+              setView('CONFIG'); // Go back to list
+          } catch (e: any) {
+              Swal.fire('Error', 'Error al guardar el plan', 'error');
+          }
       }
   };
 

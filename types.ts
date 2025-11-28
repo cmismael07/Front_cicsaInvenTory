@@ -24,6 +24,7 @@ export enum FrecuenciaMantenimiento {
 
 export enum EstadoPlan {
   PENDIENTE = 'Pendiente',
+  EN_PROCESO = 'En Proceso',
   REALIZADO = 'Realizado',
   RETRASADO = 'Retrasado'
 }
@@ -144,6 +145,7 @@ export interface RegistroMantenimiento {
   proveedor: string;
   costo: number;
   descripcion: string;
+  archivo_orden?: string; // URL or name of the signed PDF
 }
 
 // --- New License Interfaces ---
@@ -175,6 +177,8 @@ export interface PlanMantenimiento {
   creado_por: string;
   fecha_creacion: string;
   estado: 'ACTIVO' | 'CERRADO';
+  ciudad_id?: number;     // Optional to support legacy plans or global plans
+  ciudad_nombre?: string;
 }
 
 export interface DetallePlan {

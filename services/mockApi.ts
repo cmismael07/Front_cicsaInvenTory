@@ -66,7 +66,7 @@ let MOCK_ASIGNACIONES: HistorialAsignacion[] = [
 ];
 
 let MOCK_MANTENIMIENTOS: RegistroMantenimiento[] = [
-  { id: 1, equipo_id: 3, equipo_codigo: 'EQ-2020-012', equipo_modelo: 'ThinkCentre M720', fecha: '2024-03-10', tipo_mantenimiento: 'Correctivo', proveedor: 'Taller Externo', costo: 120, descripcion: 'Cambio de Disco Duro' }
+  { id: 1, equipo_id: 3, equipo_codigo: 'EQ-2020-012', equipo_modelo: 'ThinkCentre M720', fecha: '2024-03-10', tipo_mantenimiento: 'Correctivo', proveedor: 'Taller Externo', costo: 120, descripcion: 'Cambio de Disco Duro', archivo_orden: 'orden_firmada_001.pdf' }
 ];
 
 let MOCK_TIPOS_LICENCIA: TipoLicencia[] = [
@@ -160,96 +160,96 @@ export const api = {
   },
   updatePuesto: async (id: number, data: any) => {
     await simulateDelay();
-    const idx = MOCK_PUESTOS.findIndex(d => d.id === id);
-    if (idx >= 0) MOCK_PUESTOS[idx] = { ...MOCK_PUESTOS[idx], ...data };
-    return MOCK_PUESTOS[idx];
+    const idx = MOCK_PUESTOS.findIndex(p => p.id === id);
+    if (idx >= 0) {
+        MOCK_PUESTOS[idx] = { ...MOCK_PUESTOS[idx], ...data };
+        return MOCK_PUESTOS[idx];
+    }
   },
   deletePuesto: async (id: number) => {
     await simulateDelay();
-    // VALIDACIÓN: Verificar si hay usuarios asignados a este puesto
+    // VALIDACIÓN
     const hasUsers = MOCK_USERS.some(u => u.puesto_id === id);
     if (hasUsers) {
       throw new Error("No se puede eliminar este puesto porque tiene usuarios asignados.");
     }
-    const idx = MOCK_PUESTOS.findIndex(d => d.id === id);
+    const idx = MOCK_PUESTOS.findIndex(p => p.id === id);
     if (idx >= 0) {
-      MOCK_PUESTOS.splice(idx, 1);
+        MOCK_PUESTOS.splice(idx, 1);
     }
   },
 
   getCiudades: async () => { await simulateDelay(); return [...MOCK_CIUDADES]; },
   createCiudad: async (data: any) => {
-    await simulateDelay();
-    const newId = MOCK_CIUDADES.length + 1;
-    const newItem = { ...data, id: newId };
-    MOCK_CIUDADES.push(newItem);
-    return newItem;
+      await simulateDelay();
+      const newId = MOCK_CIUDADES.length + 1;
+      const newItem = { ...data, id: newId };
+      MOCK_CIUDADES.push(newItem);
+      return newItem;
   },
   updateCiudad: async (id: number, data: any) => {
-    await simulateDelay();
-    const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
-    if (idx >= 0) MOCK_CIUDADES[idx] = { ...MOCK_CIUDADES[idx], ...data };
-    return MOCK_CIUDADES[idx];
+      await simulateDelay();
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) {
+          MOCK_CIUDADES[idx] = { ...MOCK_CIUDADES[idx], ...data };
+          return MOCK_CIUDADES[idx];
+      }
   },
   deleteCiudad: async (id: number) => {
-    await simulateDelay();
-    const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
-    if (idx >= 0) {
-      MOCK_CIUDADES.splice(idx, 1);
-    }
+      await simulateDelay();
+      const hasDepts = MOCK_DEPARTAMENTOS.some(d => d.ciudad_id === id);
+      if (hasDepts) throw new Error("No se puede eliminar, tiene departamentos asignados.");
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) MOCK_CIUDADES.splice(idx, 1);
   },
 
   // Users
   getUsuarios: async () => { await simulateDelay(); return [...MOCK_USERS]; },
-  createUsuario: async (data: Usuario) => {
+  createUsuario: async (data: any) => {
     await simulateDelay();
-    // Enrich with Dept/Puesto names
-    const dept = MOCK_DEPARTAMENTOS.find(d => d.id === data.departamento_id);
-    const puesto = MOCK_PUESTOS.find(p => p.id === data.puesto_id);
-    const newUser = { 
-        ...data, 
-        id: MOCK_USERS.length + 1,
-        nombre_completo: buildName(data.nombres, data.apellidos),
-        departamento_nombre: dept?.nombre,
-        puesto_nombre: puesto?.nombre,
-        password: data.password || '123'
+    const newId = MOCK_USERS.length + 1;
+    const dept = MOCK_DEPARTAMENTOS.find(d => d.id === Number(data.departamento_id));
+    const puesto = MOCK_PUESTOS.find(p => p.id === Number(data.puesto_id));
+    
+    const newUser = {
+      ...data,
+      id: newId,
+      nombre_completo: `${data.nombres} ${data.apellidos}`,
+      departamento_nombre: dept?.nombre,
+      puesto_nombre: puesto?.nombre
     };
     MOCK_USERS.push(newUser);
     return newUser;
   },
-  updateUsuario: async (id: number, data: Partial<Usuario>) => {
+  updateUsuario: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_USERS.findIndex(u => u.id === id);
     if (idx >= 0) {
-        const dept = data.departamento_id ? MOCK_DEPARTAMENTOS.find(d => d.id === data.departamento_id) : null;
-        const puesto = data.puesto_id ? MOCK_PUESTOS.find(p => p.id === data.puesto_id) : null;
-        
-        MOCK_USERS[idx] = { 
-            ...MOCK_USERS[idx], 
-            ...data,
-            ...(data.nombres || data.apellidos ? { nombre_completo: buildName(data.nombres || MOCK_USERS[idx].nombres, data.apellidos || MOCK_USERS[idx].apellidos) } : {}),
-            ...(dept ? { departamento_nombre: dept.nombre } : {}),
-            ...(puesto ? { puesto_nombre: puesto.nombre } : {})
-        };
-        return MOCK_USERS[idx];
+      const dept = data.departamento_id ? MOCK_DEPARTAMENTOS.find(d => d.id === Number(data.departamento_id)) : null;
+      const puesto = data.puesto_id ? MOCK_PUESTOS.find(p => p.id === Number(data.puesto_id)) : null;
+      
+      MOCK_USERS[idx] = {
+        ...MOCK_USERS[idx],
+        ...data,
+        ...(data.nombres || data.apellidos ? { nombre_completo: `${data.nombres || MOCK_USERS[idx].nombres} ${data.apellidos || MOCK_USERS[idx].apellidos}` } : {}),
+        ...(dept ? { departamento_nombre: dept.nombre } : {}),
+        ...(puesto ? { puesto_nombre: puesto.nombre } : {})
+      };
+      return MOCK_USERS[idx];
     }
-    throw new Error("Usuario no encontrado");
   },
   deleteUsuario: async (id: number) => {
-     // Soft delete usually, but for mock delete
-     await simulateDelay();
-     MOCK_USERS = MOCK_USERS.filter(u => u.id !== id);
+      await simulateDelay();
+      const idx = MOCK_USERS.findIndex(u => u.id === id);
+      if (idx >= 0) MOCK_USERS.splice(idx, 1);
   },
 
   // Equipment Types
   getTiposEquipo: async () => { await simulateDelay(); return [...MOCK_TIPOS]; },
   createTipoEquipo: async (data: any) => {
     await simulateDelay();
-    const newItem = { 
-      ...data, 
-      id: MOCK_TIPOS.length + 1,
-      frecuencia_anual: data.frecuencia_anual !== undefined ? Number(data.frecuencia_anual) : 1
-    };
+    const newId = MOCK_TIPOS.length + 1;
+    const newItem = { ...data, id: newId };
     MOCK_TIPOS.push(newItem);
     return newItem;
   },
@@ -257,445 +257,473 @@ export const api = {
     await simulateDelay();
     const idx = MOCK_TIPOS.findIndex(t => t.id === id);
     if (idx >= 0) {
-      MOCK_TIPOS[idx] = { 
-        ...MOCK_TIPOS[idx], 
-        ...data,
-        frecuencia_anual: data.frecuencia_anual !== undefined ? Number(data.frecuencia_anual) : MOCK_TIPOS[idx].frecuencia_anual
-      };
+      MOCK_TIPOS[idx] = { ...MOCK_TIPOS[idx], ...data };
+      return MOCK_TIPOS[idx];
     }
-    return MOCK_TIPOS[idx];
   },
   deleteTipoEquipo: async (id: number) => {
     await simulateDelay();
-    
-    // VALIDACIÓN: No permitir eliminar si hay equipos asociados
-    const hasLinkedEquipments = MOCK_EQUIPOS.some(e => e.tipo_equipo_id === id);
-    if (hasLinkedEquipments) {
-      throw new Error("No se puede eliminar este tipo de equipo porque existen activos asociados a él.");
-    }
-
-    MOCK_TIPOS = MOCK_TIPOS.filter(t => t.id !== id);
+    const idx = MOCK_TIPOS.findIndex(t => t.id === id);
+    if (idx >= 0) MOCK_TIPOS.splice(idx, 1);
   },
 
   // Equipment
   getEquipos: async () => { await simulateDelay(); return [...MOCK_EQUIPOS]; },
   createEquipo: async (data: any) => {
     await simulateDelay();
-    const tipo = MOCK_TIPOS.find(t => t.id === data.tipo_equipo_id);
-    // Note: ubicacion_nombre should be passed from frontend or resolved here if we had a full location catalog
-    const newEq = { 
-        ...data, 
-        id: MOCK_EQUIPOS.length + 1,
-        tipo_nombre: tipo?.nombre,
-    };
-    MOCK_EQUIPOS.push(newEq);
+    const newId = MOCK_EQUIPOS.length + 1;
+    const tipo = MOCK_TIPOS.find(t => t.id === Number(data.tipo_equipo_id));
     
+    const newItem = {
+      ...data,
+      id: newId,
+      tipo_nombre: tipo?.nombre,
+      estado: EstadoEquipo.DISPONIBLE
+    };
+    MOCK_EQUIPOS.push(newItem);
+    // Log Creation
     MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: newEq.id,
-        equipo_codigo: newEq.codigo_activo,
-        tipo_accion: 'CREACION',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Ingreso inicial (Loc: ${data.ubicacion_nombre || 'N/A'})`
+      id: MOCK_HISTORIAL.length + 1,
+      equipo_id: newId,
+      equipo_codigo: newItem.codigo_activo,
+      tipo_accion: 'CREACION',
+      fecha: new Date().toISOString().split('T')[0],
+      usuario_responsable: 'Sistema',
+      detalle: 'Ingreso al inventario'
     });
-    return newEq;
+    return newItem;
   },
-  updateEquipo: async (id: number, data: Partial<Equipo>) => {
+  updateEquipo: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
     if (idx >= 0) {
-        const oldData = MOCK_EQUIPOS[idx];
-        MOCK_EQUIPOS[idx] = { ...oldData, ...data };
-        
-        MOCK_HISTORIAL.push({
-            id: MOCK_HISTORIAL.length + 1,
-            equipo_id: id,
-            equipo_codigo: oldData.codigo_activo,
-            tipo_accion: 'EDICION',
-            fecha: new Date().toISOString().split('T')[0],
-            usuario_responsable: 'Admin',
-            detalle: 'Actualización de datos'
-        });
-        return MOCK_EQUIPOS[idx];
+      const oldData = MOCK_EQUIPOS[idx];
+      const tipo = data.tipo_equipo_id ? MOCK_TIPOS.find(t => t.id === Number(data.tipo_equipo_id)) : null;
+      
+      MOCK_EQUIPOS[idx] = {
+        ...MOCK_EQUIPOS[idx],
+        ...data,
+        ...(tipo ? { tipo_nombre: tipo.nombre } : {})
+      };
+      
+      // Log Update (Optional, maybe specific fields)
+      return MOCK_EQUIPOS[idx];
     }
-    throw new Error("Equipo no encontrado");
   },
 
   // Actions
   asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    const user = MOCK_USERS.find(u => u.id === usuarioId);
-    if (!eq || !user) throw new Error("Equipo o Usuario no encontrado");
+    const equipoIdx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    const usuario = MOCK_USERS.find(u => u.id === Number(usuarioId));
+    
+    if (equipoIdx >= 0 && usuario) {
+      const equipo = MOCK_EQUIPOS[equipoIdx];
+      
+      // Update Equipment
+      MOCK_EQUIPOS[equipoIdx] = {
+        ...equipo,
+        estado: EstadoEquipo.ACTIVO,
+        responsable_id: usuario.id,
+        responsable_nombre: usuario.nombre_completo,
+        ubicacion_nombre: ubicacion, // Physical location desk/office
+        observaciones: observaciones || equipo.observaciones
+      };
 
-    // Close previous assignment if exists (though logic usually prevents assigning already assigned)
-    // ...
-
-    eq.estado = EstadoEquipo.ACTIVO;
-    eq.responsable_id = user.id;
-    eq.responsable_nombre = user.nombre_completo;
-    eq.ubicacion_nombre = ubicacion; // Specific location
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
+      // Add History
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: equipo.codigo_activo,
         tipo_accion: 'ASIGNACION',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Asignado a ${user.nombre_completo}`
-    });
+        detalle: `Asignado a ${usuario.nombre_completo}`
+      });
 
-    MOCK_ASIGNACIONES.push({
+      // Add Assignment History Record
+      MOCK_ASIGNACIONES.push({
         id: MOCK_ASIGNACIONES.length + 1,
-        equipo_codigo: eq.codigo_activo,
-        equipo_modelo: eq.modelo,
-        usuario_nombre: user.nombre_completo,
-        usuario_departamento: user.departamento_nombre || '',
+        equipo_codigo: equipo.codigo_activo,
+        equipo_modelo: equipo.modelo,
+        usuario_nombre: usuario.nombre_completo,
+        usuario_departamento: usuario.departamento_nombre || '',
         fecha_inicio: new Date().toISOString().split('T')[0],
         fecha_fin: null,
         ubicacion: ubicacion,
-        archivo_pdf: undefined
-    });
-    
-    return eq;
+        archivo_pdf: `acta_${equipo.codigo_activo}.pdf` // Mock file
+      });
+    }
   },
 
   recepcionarEquipo: async (id: number, observaciones: string, ubicacionId?: number, ubicacionNombre?: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      const prevUser = MOCK_EQUIPOS[idx].responsable_nombre;
+      
+      MOCK_EQUIPOS[idx] = {
+        ...MOCK_EQUIPOS[idx],
+        estado: EstadoEquipo.DISPONIBLE,
+        responsable_id: undefined,
+        responsable_nombre: undefined,
+        ubicacion_id: ubicacionId || MOCK_EQUIPOS[idx].ubicacion_id,
+        ubicacion_nombre: ubicacionNombre || 'Bodega IT',
+        observaciones: observaciones
+      };
 
-    // Close active assignment
-    const activeAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === eq.codigo_activo && a.fecha_fin === null);
-    if (activeAssign) {
-        activeAssign.fecha_fin = new Date().toISOString().split('T')[0];
-    }
+      // Close Assignment History
+      const lastAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === MOCK_EQUIPOS[idx].codigo_activo && a.fecha_fin === null);
+      if (lastAssign) {
+        lastAssign.fecha_fin = new Date().toISOString().split('T')[0];
+      }
 
-    eq.estado = EstadoEquipo.DISPONIBLE;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    // Update location to warehouse
-    eq.ubicacion_id = ubicacionId || eq.ubicacion_id; 
-    eq.ubicacion_nombre = ubicacionNombre || 'Bodega IT';
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
         tipo_accion: 'RECEPCION',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Reingreso a inventario (Loc: ${ubicacionNombre}). Obs: ${observaciones}`
-    });
-
-    return eq;
+        detalle: `Devuelto por ${prevUser}`
+      });
+    }
   },
 
   bajaEquipo: async (id: number, motivo: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    eq.estado = EstadoEquipo.BAJA;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    eq.observaciones = motivo;
-
-    MOCK_HISTORIAL.push({
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      MOCK_EQUIPOS[idx].estado = EstadoEquipo.BAJA;
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
         tipo_accion: 'BAJA',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Baja definitiva: ${motivo}`
-    });
-    return eq;
-  },
-
-  enviarAMantenimiento: async (id: number, motivo: string) => {
-    await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
-    
-    eq.estado = EstadoEquipo.EN_MANTENIMIENTO;
-    eq.observaciones = motivo;
-    
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'MANTENIMIENTO',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Enviado a mantenimiento: ${motivo}`
-    });
-    return eq;
-  },
-
-  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: 'DISPONIBLE' | 'BAJA') => {
-    await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === equipoId);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    eq.estado = nuevoEstado === 'DISPONIBLE' ? EstadoEquipo.DISPONIBLE : EstadoEquipo.BAJA;
-    
-    // If it becomes available, set new location
-    if (nuevoEstado === 'DISPONIBLE') {
-        eq.ubicacion_id = data.ubicacionId;
-        eq.ubicacion_nombre = data.ubicacionNombre;
-        eq.responsable_id = undefined;
-        eq.responsable_nombre = undefined;
+        detalle: `Motivo: ${motivo}`
+      });
     }
-
-    // Update Charger Serial if provided
-    if (data.serie_cargador) {
-      eq.serie_cargador = data.serie_cargador;
-    }
-
-    MOCK_MANTENIMIENTOS.push({
-        id: MOCK_MANTENIMIENTOS.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        equipo_modelo: eq.modelo,
-        fecha: new Date().toISOString().split('T')[0],
-        tipo_mantenimiento: data.tipo,
-        proveedor: data.proveedor,
-        costo: data.costo,
-        descripcion: data.descripcion
-    });
-
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'MANTENIMIENTO',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Fin mantenimiento (${nuevoEstado}). ${data.descripcion}`
-    });
-
-    return eq;
   },
 
   marcarParaBaja: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    // If it was assigned, close assignment
-    const activeAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === eq.codigo_activo && a.fecha_fin === null);
-    if (activeAssign) {
-        activeAssign.fecha_fin = new Date().toISOString().split('T')[0];
-    }
-
-    eq.estado = EstadoEquipo.PARA_BAJA;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    eq.ubicacion_id = ubicacionId;
-    eq.ubicacion_nombre = ubicacionNombre;
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'PRE_BAJA',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Enviado a Pre-Baja (Bodega: ${ubicacionNombre}). Obs: ${observaciones}`
-    });
-    
-    return eq;
-  },
-
-  // Upload file for assignment
-  subirArchivoAsignacion: async (id: number, file: File) => {
-    await simulateDelay();
-    const assignment = MOCK_ASIGNACIONES.find(a => a.id === id);
-    if (!assignment) throw new Error("Asignación no encontrada");
-    
-    // Simulate storing file name/path
-    assignment.archivo_pdf = file.name;
-    return assignment;
-  },
-
-  // Licenses
-  getTipoLicencias: async () => { await simulateDelay(); return [...MOCK_TIPOS_LICENCIA]; },
-  createTipoLicencia: async (data: any) => {
-     await simulateDelay();
-     const newItem = { ...data, id: MOCK_TIPOS_LICENCIA.length + 1 };
-     MOCK_TIPOS_LICENCIA.push(newItem);
-     return newItem;
-  },
-  getLicencias: async () => { await simulateDelay(); return [...MOCK_LICENCIAS]; },
-  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string) => {
-    await simulateDelay();
-    const tipo = MOCK_TIPOS_LICENCIA.find(t => t.id === tipoId);
-    if (!tipo) throw new Error("Tipo no encontrado");
-    for(let i=0; i<cantidad; i++) {
-        MOCK_LICENCIAS.push({
-            id: MOCK_LICENCIAS.length + 1 + i,
-            tipo_id: tipoId,
-            tipo_nombre: tipo.nombre,
-            clave: `KEY-${Math.floor(Math.random() * 10000)}`,
-            fecha_compra: new Date().toISOString().split('T')[0],
-            fecha_vencimiento: fechaVencimiento,
-            usuario_id: null
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+        MOCK_EQUIPOS[idx].estado = EstadoEquipo.PARA_BAJA;
+        MOCK_EQUIPOS[idx].observaciones = observaciones;
+        MOCK_EQUIPOS[idx].ubicacion_id = ubicacionId;
+        MOCK_EQUIPOS[idx].ubicacion_nombre = ubicacionNombre;
+        
+        MOCK_HISTORIAL.push({
+            id: MOCK_HISTORIAL.length + 1,
+            equipo_id: id,
+            equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+            tipo_accion: 'PRE_BAJA',
+            fecha: new Date().toISOString().split('T')[0],
+            usuario_responsable: 'Admin',
+            detalle: `Enviado a pre-baja: ${observaciones}`
         });
     }
   },
-  asignarLicencia: async (licenciaId: number, usuarioId: number) => {
+
+  enviarAMantenimiento: async (id: number, motivo: string) => {
     await simulateDelay();
-    const lic = MOCK_LICENCIAS.find(l => l.id === licenciaId);
-    const user = MOCK_USERS.find(u => u.id === usuarioId);
-    if (lic && user) {
-        lic.usuario_id = user.id;
-        lic.usuario_nombre = user.nombre_completo;
-        lic.usuario_departamento = user.departamento_nombre;
-        return lic;
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      MOCK_EQUIPOS[idx].estado = EstadoEquipo.EN_MANTENIMIENTO;
+      MOCK_EQUIPOS[idx].observaciones = motivo; // Actualizar razón para que se vea en el módulo de mantenimiento
+
+      MOCK_HISTORIAL.push({
+        id: MOCK_HISTORIAL.length + 1,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        tipo_accion: 'MANTENIMIENTO',
+        fecha: new Date().toISOString().split('T')[0],
+        usuario_responsable: 'Admin',
+        detalle: `Enviado a taller: ${motivo}`
+      });
     }
-    throw new Error("Error al asignar");
-  },
-  liberarLicencia: async (licenciaId: number) => {
-    await simulateDelay();
-    const lic = MOCK_LICENCIAS.find(l => l.id === licenciaId);
-    if (lic) {
-        lic.usuario_id = undefined;
-        lic.usuario_nombre = undefined;
-        lic.usuario_departamento = undefined;
-        return lic;
-    }
-    throw new Error("Licencia no encontrada");
   },
 
-  // Maintenance Planning
-  getMaintenancePlans: async () => { await simulateDelay(); return [...MOCK_PLANES]; },
-  
-  createMaintenancePlan: async (plan: PlanMantenimiento, details: DetallePlan[]) => {
+  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string, archivo?: File) => {
     await simulateDelay();
-    MOCK_PLANES.push(plan);
-    MOCK_DETALLES_PLAN.push(...details);
-    return plan;
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === equipoId);
+    if (idx >= 0) {
+      // 1. Crear registro de mantenimiento
+      MOCK_MANTENIMIENTOS.push({
+        id: MOCK_MANTENIMIENTOS.length + 1,
+        equipo_id: equipoId,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        equipo_modelo: MOCK_EQUIPOS[idx].modelo,
+        fecha: new Date().toISOString().split('T')[0],
+        tipo_mantenimiento: data.tipo,
+        proveedor: data.proveedor,
+        costo: data.costo,
+        descripcion: data.descripcion,
+        archivo_orden: archivo ? archivo.name : undefined // Mock storage
+      });
+
+      // 2. Actualizar equipo
+      MOCK_EQUIPOS[idx].estado = nuevoEstado as EstadoEquipo;
+      MOCK_EQUIPOS[idx].ultimo_mantenimiento = new Date().toISOString().split('T')[0];
+      // IMPORTANT: Limpiar observaciones para que el equipo quede "limpio" tras el mantenimiento
+      MOCK_EQUIPOS[idx].observaciones = ''; 
+      
+      if (data.ubicacionId) {
+          MOCK_EQUIPOS[idx].ubicacion_id = data.ubicacionId;
+          MOCK_EQUIPOS[idx].ubicacion_nombre = data.ubicacionNombre;
+      }
+      if (data.serie_cargador) {
+        MOCK_EQUIPOS[idx].serie_cargador = data.serie_cargador;
+      }
+
+      // 3. Log Historial
+      MOCK_HISTORIAL.push({
+        id: MOCK_HISTORIAL.length + 1,
+        equipo_id: equipoId,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        tipo_accion: 'MANTENIMIENTO',
+        fecha: new Date().toISOString().split('T')[0],
+        usuario_responsable: 'Admin',
+        detalle: `Mantenimiento finalizado (${data.tipo})`
+      });
+
+      // 4. (Integration) Check if this equipment was in a Maintenance Plan and update task status
+      // CORRECCIÓN: Solo cerrar las tareas que están EN_PROCESO.
+      // Las tareas PENDIENTES (futuras) no deben tocarse.
+      MOCK_DETALLES_PLAN.forEach(task => {
+        if (task.equipo_id === equipoId && task.estado === EstadoPlan.EN_PROCESO) {
+            task.estado = EstadoPlan.REALIZADO;
+            task.fecha_ejecucion = new Date().toISOString().split('T')[0];
+            task.tecnico_responsable = data.proveedor;
+        }
+      });
+    }
+  },
+
+  iniciarMantenimientoDesdePlan: async (planDetailId: number, motivo: string) => {
+    await simulateDelay();
+    // 1. Update Plan Detail
+    const detail = MOCK_DETALLES_PLAN.find(d => d.id === planDetailId);
+    if (detail) {
+        detail.estado = EstadoPlan.EN_PROCESO;
+        
+        // 2. Update Equipment Status
+        const eqIdx = MOCK_EQUIPOS.findIndex(e => e.id === detail.equipo_id);
+        if (eqIdx >= 0) {
+            MOCK_EQUIPOS[eqIdx].estado = EstadoEquipo.EN_MANTENIMIENTO;
+            MOCK_EQUIPOS[eqIdx].observaciones = motivo; // Actualizar razón para que se vea en el módulo de mantenimiento
+            
+            // 3. Add History
+            MOCK_HISTORIAL.push({
+                id: MOCK_HISTORIAL.length + 1,
+                equipo_id: detail.equipo_id,
+                equipo_codigo: MOCK_EQUIPOS[eqIdx].codigo_activo,
+                tipo_accion: 'MANTENIMIENTO',
+                fecha: new Date().toISOString().split('T')[0],
+                usuario_responsable: 'Admin',
+                detalle: `Iniciado desde Planificación: ${motivo}`
+            });
+        }
+    }
+  },
+
+  subirArchivoAsignacion: async (id: number, file: File) => {
+      // Mock upload
+      await simulateDelay();
+      const idx = MOCK_ASIGNACIONES.findIndex(a => a.id === id);
+      if (idx >= 0) {
+          MOCK_ASIGNACIONES[idx].archivo_pdf = file.name;
+          return MOCK_ASIGNACIONES[idx];
+      }
+      throw new Error("Asignación no encontrada");
+  },
+
+  // --- Licenses ---
+  getTipoLicencias: async () => { await simulateDelay(); return [...MOCK_TIPOS_LICENCIA]; },
+  createTipoLicencia: async (data: any) => {
+    await simulateDelay();
+    const newId = MOCK_TIPOS_LICENCIA.length + 1;
+    const newItem = { ...data, id: newId };
+    MOCK_TIPOS_LICENCIA.push(newItem);
+    return newItem;
+  },
+  updateTipoLicencia: async (id: number, data: any) => {
+    await simulateDelay();
+    const idx = MOCK_TIPOS_LICENCIA.findIndex(t => t.id === id);
+    if (idx >= 0) {
+        MOCK_TIPOS_LICENCIA[idx] = { ...MOCK_TIPOS_LICENCIA[idx], ...data };
+        return MOCK_TIPOS_LICENCIA[idx];
+    }
+  },
+  deleteTipoLicencia: async (id: number) => {
+      await simulateDelay();
+      const idx = MOCK_TIPOS_LICENCIA.findIndex(t => t.id === id);
+      if (idx >= 0) MOCK_TIPOS_LICENCIA.splice(idx, 1);
+  },
+  
+  getLicencias: async () => { await simulateDelay(); return [...MOCK_LICENCIAS]; },
+  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string) => {
+      await simulateDelay();
+      const tipo = MOCK_TIPOS_LICENCIA.find(t => t.id === Number(tipoId));
+      if (!tipo) throw new Error("Tipo no encontrado");
+
+      for(let i=0; i<cantidad; i++) {
+          const newId = MOCK_LICENCIAS.length + 1 + i;
+          MOCK_LICENCIAS.push({
+              id: newId,
+              tipo_id: tipo.id,
+              tipo_nombre: tipo.nombre,
+              clave: `${tipo.nombre.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*1000)}-${new Date().getFullYear()}`,
+              fecha_compra: new Date().toISOString().split('T')[0],
+              fecha_vencimiento: fechaVencimiento,
+              usuario_id: null,
+              usuario_nombre: undefined
+          });
+      }
+      return true;
+  },
+  asignarLicencia: async (licenciaId: number, usuarioId: number) => {
+      await simulateDelay();
+      const licIdx = MOCK_LICENCIAS.findIndex(l => l.id === licenciaId);
+      const user = MOCK_USERS.find(u => u.id === Number(usuarioId));
+      
+      if (licIdx >= 0 && user) {
+          MOCK_LICENCIAS[licIdx].usuario_id = user.id;
+          MOCK_LICENCIAS[licIdx].usuario_nombre = user.nombre_completo;
+          MOCK_LICENCIAS[licIdx].usuario_departamento = user.departamento_nombre;
+          return MOCK_LICENCIAS[licIdx];
+      }
+      throw new Error("Error al asignar licencia");
+  },
+  liberarLicencia: async (licenciaId: number) => {
+      await simulateDelay();
+      const licIdx = MOCK_LICENCIAS.findIndex(l => l.id === licenciaId);
+      if (licIdx >= 0) {
+          MOCK_LICENCIAS[licIdx].usuario_id = null;
+          MOCK_LICENCIAS[licIdx].usuario_nombre = undefined;
+          MOCK_LICENCIAS[licIdx].usuario_departamento = undefined;
+          return MOCK_LICENCIAS[licIdx];
+      }
+      throw new Error("Licencia no encontrada");
+  },
+
+  // --- Maintenance Planning ---
+  getMaintenancePlans: async () => {
+    await simulateDelay();
+    return [...MOCK_PLANES];
   },
 
   getPlanDetails: async (planId: number) => {
-    await simulateDelay();
-    const plan = MOCK_PLANES.find(p => p.id === planId);
-    const details = MOCK_DETALLES_PLAN.filter(d => d.plan_id === planId);
-    if (!plan) throw new Error("Plan no encontrado");
-    
-    // Attach evidence existence?
-    // In a real app, query evidences by plan_id
-    
-    return { plan, details };
+      await simulateDelay();
+      const plan = MOCK_PLANES.find(p => p.id === planId);
+      if (!plan) throw new Error("Plan no encontrado");
+      const details = MOCK_DETALLES_PLAN.filter(d => d.plan_id === planId);
+      return { plan, details };
+  },
+
+  createMaintenancePlan: async (plan: PlanMantenimiento, details: DetallePlan[]) => {
+      await simulateDelay();
+      MOCK_PLANES.push(plan);
+      MOCK_DETALLES_PLAN.push(...details);
+      return plan;
   },
 
   updatePlanDetailMonth: async (detailId: number, newMonth: number) => {
-    await simulateDelay();
-    const detail = MOCK_DETALLES_PLAN.find(d => d.id === detailId);
-    if (detail) {
-      detail.mes_programado = newMonth;
-      return detail;
-    }
-    throw new Error("Detalle no encontrado");
+      await simulateDelay();
+      const idx = MOCK_DETALLES_PLAN.findIndex(d => d.id === detailId);
+      if (idx >= 0) {
+          MOCK_DETALLES_PLAN[idx].mes_programado = newMonth;
+          return MOCK_DETALLES_PLAN[idx];
+      }
   },
-
-  registerMaintenanceExecution: async (detailId: number, data: { fecha: string; tecnico: string; observaciones: string; archivo?: File }) => {
-    await simulateDelay();
-    const detail = MOCK_DETALLES_PLAN.find(d => d.id === detailId);
-    if (!detail) throw new Error("Tarea no encontrada");
-
-    detail.estado = EstadoPlan.REALIZADO;
-    detail.fecha_ejecucion = data.fecha;
-    detail.tecnico_responsable = data.tecnico;
-    
-    // Save evidence
-    if (data.archivo) {
-      const fakeUrl = URL.createObjectURL(data.archivo); // Simulate URL
-      MOCK_EVIDENCIAS.push({
-        id: MOCK_EVIDENCIAS.length + 1,
-        detalle_plan_id: detail.id,
-        plan_id: detail.plan_id,
-        equipo_id: detail.equipo_id,
-        fecha_subida: new Date().toISOString(),
-        archivo_url: fakeUrl,
-        tipo_archivo: data.archivo.type.includes('image') ? 'imagen' : 'pdf',
-        observaciones: data.observaciones
-      });
-    }
-
-    return detail;
+  
+  registerMaintenanceExecution: async (detailId: number, data: { fecha: string, tecnico: string, observaciones: string, archivo?: File }) => {
+      await simulateDelay();
+      const idx = MOCK_DETALLES_PLAN.findIndex(d => d.id === detailId);
+      if (idx >= 0) {
+          MOCK_DETALLES_PLAN[idx].estado = EstadoPlan.REALIZADO;
+          MOCK_DETALLES_PLAN[idx].fecha_ejecucion = data.fecha;
+          MOCK_DETALLES_PLAN[idx].tecnico_responsable = data.tecnico;
+          
+          if (data.archivo) {
+              MOCK_EVIDENCIAS.push({
+                  id: MOCK_EVIDENCIAS.length + 1,
+                  detalle_plan_id: detailId,
+                  plan_id: MOCK_DETALLES_PLAN[idx].plan_id,
+                  equipo_id: MOCK_DETALLES_PLAN[idx].equipo_id,
+                  fecha_subida: new Date().toISOString(),
+                  archivo_url: URL.createObjectURL(data.archivo), // Mock URL
+                  tipo_archivo: data.archivo.type.includes('pdf') ? 'pdf' : 'imagen',
+                  observaciones: data.observaciones
+              });
+          }
+      }
   },
 
   getEvidence: async (detailId: number) => {
-    await simulateDelay();
-    return MOCK_EVIDENCIAS.find(e => e.detalle_plan_id === detailId);
+      await simulateDelay();
+      return MOCK_EVIDENCIAS.find(e => e.detalle_plan_id === detailId);
   },
 
-  // Stats
+  // --- Stats & Reports ---
   getStats: async () => {
-    await simulateDelay();
-    return {
-        total: MOCK_EQUIPOS.length,
-        assigned: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.ACTIVO).length,
-        available: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.DISPONIBLE).length,
-        maintenance: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.EN_MANTENIMIENTO).length,
-        retired: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.BAJA).length
-    };
+    // This is handled by useDashboardData mostly, but if we need a raw call:
+    return {}; 
   },
   getWarrantyReport: async () => {
-    await simulateDelay();
-    // Mock logic for warranties expiring
-    return MOCK_EQUIPOS
-        .filter(e => e.estado === EstadoEquipo.ACTIVO)
-        .slice(0, 5)
-        .map(e => ({ equipo: e, dias_restantes: Math.floor(Math.random() * 90) + 1, fecha_vencimiento: '2025-01-01' }));
+    // Filter active equipment
+    const activeEq = MOCK_EQUIPOS.filter(e => e.estado !== EstadoEquipo.BAJA);
+    const report: ReporteGarantia[] = [];
+    
+    activeEq.forEach(eq => {
+        const purchaseDate = new Date(eq.fecha_compra);
+        const warrantyEnd = new Date(purchaseDate);
+        warrantyEnd.setFullYear(purchaseDate.getFullYear() + eq.anos_garantia);
+        
+        const today = new Date();
+        const diffTime = warrantyEnd.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 90) { // Next 3 months or expired
+            report.push({
+                equipo: eq,
+                dias_restantes: diffDays,
+                fecha_vencimiento: warrantyEnd.toISOString().split('T')[0]
+            });
+        }
+    });
+    return report;
   },
   getReplacementCandidates: async () => {
-      await simulateDelay();
-      const currentYear = new Date().getFullYear();
-      return MOCK_EQUIPOS.filter(e => (currentYear - new Date(e.fecha_compra).getFullYear()) >= 4);
+    // Logic: Equipment older than 4 years
+    const activeEq = MOCK_EQUIPOS.filter(e => e.estado !== EstadoEquipo.BAJA);
+    const today = new Date();
+    return activeEq.filter(eq => {
+        const purchaseDate = new Date(eq.fecha_compra);
+        const ageYears = (today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+        return ageYears >= 4;
+    });
   },
   getHistorial: async (tipoId?: number) => {
-      await simulateDelay();
-      let res = [...MOCK_HISTORIAL].sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    await simulateDelay();
+    if (tipoId) {
+        // Filter history by equipment that matches the type
+        const eqsOfType = MOCK_EQUIPOS.filter(e => e.tipo_equipo_id === tipoId).map(e => e.id);
+        return MOCK_HISTORIAL.filter(h => eqsOfType.includes(h.equipo_id)).sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    }
+    return MOCK_HISTORIAL.sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  },
+  getHistorialAsignaciones: async () => { await simulateDelay(); return [...MOCK_ASIGNACIONES]; },
+  getHistorialMantenimiento: async (tipoId?: number) => { 
+      await simulateDelay(); 
       if (tipoId) {
-          // Filter based on equipment type (need to join with Equipos)
-          // For mock, simplified:
-          res = res.filter(h => {
-              const eq = MOCK_EQUIPOS.find(e => e.id === h.equipo_id);
-              return eq && eq.tipo_equipo_id === tipoId;
-          });
+         const eqsOfType = MOCK_EQUIPOS.filter(e => e.tipo_equipo_id === tipoId).map(e => e.id);
+         return MOCK_MANTENIMIENTOS.filter(m => eqsOfType.includes(m.equipo_id)).sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
       }
-      return res;
+      return [...MOCK_MANTENIMIENTOS].sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()); 
   },
-  getHistorialAsignaciones: async () => {
-      await simulateDelay();
-      return [...MOCK_ASIGNACIONES].sort((a,b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime());
-  },
-  getHistorialMantenimiento: async (tipoId?: number) => {
-      await simulateDelay();
-      let res = [...MOCK_MANTENIMIENTOS];
-       if (tipoId) {
-           res = res.filter(m => {
-              const eq = MOCK_EQUIPOS.find(e => e.id === m.equipo_id);
-              return eq && eq.tipo_equipo_id === tipoId;
-          });
-       }
-      return res;
-  },
-  getNotifications: async () => {
-      await simulateDelay();
-      return [...MOCK_NOTIFICACIONES];
-  }
+  getNotifications: async () => { await simulateDelay(); return [...MOCK_NOTIFICACIONES]; }
 };
-
-// Check if we should use the live API
-if (USE_LIVE_API) {
-    Object.assign(api, liveApi);
-}
