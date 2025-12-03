@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useMaintenanceManager } from '../hooks/useMaintenanceManager';
 import { MaintenanceHeader } from './maintenanceManager/MaintenanceHeader';
@@ -11,7 +12,8 @@ const MaintenanceManager: React.FC = () => {
     bodegas, 
     loading, 
     selectedEquipo, 
-    formData, 
+    formData,
+    reportFile,
     actions 
   } = useMaintenanceManager();
 
@@ -31,7 +33,9 @@ const MaintenanceManager: React.FC = () => {
         equipo={selectedEquipo}
         bodegas={bodegas}
         formData={formData}
+        reportFile={reportFile}
         onFormChange={actions.updateForm}
+        onFileChange={actions.setFile}
         onSubmit={actions.submitMaintenance}
       />
     </div>

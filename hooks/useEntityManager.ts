@@ -6,6 +6,8 @@ export interface EntityBase {
   id: number;
   nombre: string;
   es_bodega?: boolean;
+  ciudad_id?: number;
+  ciudad_nombre?: string;
 }
 
 interface UseEntityManagerProps {

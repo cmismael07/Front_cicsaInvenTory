@@ -4,7 +4,7 @@ import { Equipo } from '../../types';
 import { reportService } from '../../services/reportService';
 import { formatCurrency, calculateAge } from '../../utils/formatters';
 import { AlertOctagon, Download, TrendingUp, Search, MapPin, User, Box, Printer } from 'lucide-react';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 
 const RENOVATION_TYPES = ['desktop', 'laptop', 'workstation', 'portatil', 'notebook'];
@@ -18,12 +18,11 @@ export const ReplacementTab: React.FC = () => {
 
   // Estadísticas del Plan
   const [planStats, setPlanStats] = useState({
-    targetCount: 0, // El 20% ideal
-    actualCount: 0, // Cuantos entraron en el reporte
+    targetCount: 0,
+    actualCount: 0,
     totalCost: 0
   });
 
-  // Helper para validar tipos permitidos en el plan
   const isRenovationType = (equipo: Equipo) => {
       const typeName = equipo.tipo_nombre?.toLowerCase() || '';
       return RENOVATION_TYPES.some(t => typeName.includes(t));
@@ -33,7 +32,7 @@ export const ReplacementTab: React.FC = () => {
     const loadData = async () => {
         try {
             const [rawCandidates, allEquipos] = await Promise.all([
-                reportService.getReplacementCandidates(), // Devuelve equipos >= 4 años
+                reportService.getReplacementCandidates(),
                 reportService.getEquipos()
             ]);
             
@@ -74,7 +73,7 @@ export const ReplacementTab: React.FC = () => {
         const lower = filterText.toLowerCase();
         result = result.filter(e => 
             e.codigo_activo.toLowerCase().includes(lower) || 
-            e.modelo.toLowerCase().includes(lower) ||
+            e.modelo.toLowerCase().includes(lower) || 
             e.marca.toLowerCase().includes(lower) ||
             (e.responsable_nombre && e.responsable_nombre.toLowerCase().includes(lower))
         );
@@ -92,13 +91,10 @@ export const ReplacementTab: React.FC = () => {
 
   const prepareExportData = () => {
     return candidates.map(e => ({
-      'Código': e.codigo_activo,
-      'Equipo': `${e.marca} ${e.modelo}`,
-      'Tipo': e.tipo_nombre,
-      'Fecha Compra': e.fecha_compra,
-      'Antigüedad': `${calculateAge(e.fecha_compra)} años`,
-      'Ubicación': e.ubicacion_nombre || 'Sin ubicación',
-      'Usuario': e.responsable_nombre || 'No asignado',
+      'Equipo': `${e.codigo_activo} - ${e.marca} ${e.modelo}`, // Combinado como en UI
+      'Antigüedad': `${calculateAge(e.fecha_compra)} años (${e.fecha_compra})`,
+      'Ubicación Actual': e.ubicacion_nombre || 'Sin ubicación',
+      'Usuario Asignado': e.responsable_nombre || 'No asignado',
       'Valor Libros': formatCurrency(e.valor_compra)
     }));
   };
@@ -167,8 +163,8 @@ export const ReplacementTab: React.FC = () => {
                     <tr>
                        <th style="width: 25%">Equipo</th>
                        <th style="width: 15%">Antigüedad</th>
-                       <th style="width: 25%">Ubicación</th>
-                       <th style="width: 20%">Usuario</th>
+                       <th style="width: 25%">Ubicación Actual</th>
+                       <th style="width: 20%">Usuario Asignado</th>
                        <th style="width: 15%">Valor Libros</th>
                     </tr>
                  </thead>
@@ -247,7 +243,7 @@ export const ReplacementTab: React.FC = () => {
             </div>
             <div className="flex gap-2">
                 <button 
-                    onClick={() => downloadCSV(prepareExportData(), 'Plan_Renovacion_Prioritario')}
+                    onClick={() => generateExcelFromData(prepareExportData(), 'Plan_Renovacion_Prioritario')}
                     className="flex items-center gap-2 text-slate-600 hover:bg-slate-100 px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 bg-white transition-colors"
                 >
                     <Download className="w-4 h-4" /> Excel

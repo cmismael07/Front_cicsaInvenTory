@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HistorialMovimiento, TipoEquipo } from '../../types';
 import { reportService } from '../../services/reportService';
 import { Filter, Calendar, Download, Printer } from 'lucide-react';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 
 export const HistoryTab: React.FC = () => {
@@ -54,7 +54,7 @@ export const HistoryTab: React.FC = () => {
     return historial.map(h => ({
       'Fecha': h.fecha,
       'Acción': h.tipo_accion,
-      'Código Equipo': h.equipo_codigo,
+      'Equipo': h.equipo_codigo, // Renombrado para coincidir con la UI
       'Responsable': h.usuario_responsable,
       'Detalle': h.detalle
     }));
@@ -77,8 +77,6 @@ export const HistoryTab: React.FC = () => {
         .badge-default { color: #475569; background-color: #f8fafc; border-color: #e2e8f0; }
 
         .font-medium { font-weight: 600; }
-        .text-slate-800 { color: #1e293b; }
-        .text-slate-600 { color: #475569; }
       </style>
     `;
 
@@ -114,17 +112,14 @@ export const HistoryTab: React.FC = () => {
             <tr>
                 <td>${h.fecha}</td>
                 <td><span class="badge ${badgeClass}">${h.tipo_accion.replace('_', ' ')}</span></td>
-                <td class="font-medium text-slate-800">${h.equipo_codigo}</td>
+                <td class="font-medium">${h.equipo_codigo}</td>
                 <td>${h.usuario_responsable}</td>
-                <td class="text-slate-600">${h.detalle}</td>
+                <td>${h.detalle}</td>
             </tr>
            `;
        });
 
-       htmlContent += `
-            </tbody>
-        </table>
-       `;
+       htmlContent += `</tbody></table>`;
     }
 
     printCustomHTML(htmlContent, 'Bitácora de Movimientos');
@@ -148,7 +143,7 @@ export const HistoryTab: React.FC = () => {
          </div>
          <div className="flex gap-2">
             <button 
-                onClick={() => downloadCSV(prepareExportData(), 'Historial_Movimientos')}
+                onClick={() => generateExcelFromData(prepareExportData(), 'Historial_Movimientos')}
                 className="flex items-center gap-2 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 bg-white transition-colors"
             >
                 <Download className="w-4 h-4" /> Excel
@@ -198,9 +193,6 @@ export const HistoryTab: React.FC = () => {
                         </td>
                     </tr>
                 ))}
-                {!loading && historial.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-slate-500">No hay movimientos registrados.</td></tr>
-                )}
             </tbody>
          </table>
       </div>

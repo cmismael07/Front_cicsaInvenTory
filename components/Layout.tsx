@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings, Building2, Users, Wrench, Lock, ChevronDown, Key } from 'lucide-react';
+import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings as SettingsIcon, Building2, Users, Wrench, Lock, ChevronDown, Key, CalendarClock, Mail, Database } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Usuario, Notificacion } from '../types';
 import Swal from 'sweetalert2';
@@ -23,7 +23,19 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   const [passwordForm, setPasswordForm] = useState({ newPass: '', confirmPass: '' });
 
   useEffect(() => {
-    api.getNotifications().then(setNotifications);
+    const initData = async () => {
+        // Load initial notifications
+        const notifs = await api.getNotifications();
+        setNotifications(notifs);
+
+        // Check for automatic maintenance alerts (Simulated Cron Job)
+        await api.verificarAlertasMantenimiento();
+        
+        // Refresh notifications in case alerts generated new ones
+        const updatedNotifs = await api.getNotifications();
+        setNotifications(updatedNotifs);
+    };
+    initData();
   }, []);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -93,11 +105,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/organizacion" icon={Building2} label="Organización" />
           <NavItem to="/usuarios" icon={Users} label="Usuarios" />
-          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
+          <NavItem to="/tipos" icon={SettingsIcon} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/planificacion" icon={CalendarClock} label="Planificación" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
+          <div className="pt-4 mt-4 border-t border-slate-100">
+            <NavItem to="/migracion" icon={Database} label="Migración" />
+            <NavItem to="/configuracion" icon={Mail} label="Config. Correo" />
+          </div>
         </nav>
       </aside>
 
@@ -121,11 +138,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/organizacion" icon={Building2} label="Organización" />
           <NavItem to="/usuarios" icon={Users} label="Usuarios" />
-          <NavItem to="/tipos" icon={Settings} label="Tipos de Equipo" />
+          <NavItem to="/tipos" icon={SettingsIcon} label="Tipos de Equipo" />
           <NavItem to="/equipos" icon={Laptop} label="Equipos" />
           <NavItem to="/mantenimiento" icon={Wrench} label="Mantenimiento" />
+          <NavItem to="/planificacion" icon={CalendarClock} label="Planificación" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
+          <NavItem to="/migracion" icon={Database} label="Migración" />
+          <NavItem to="/configuracion" icon={Mail} label="Config. Correo" />
         </nav>
         <div className="p-4 border-t border-slate-100">
              <button onClick={onLogout} className="flex items-center gap-3 px-4 py-3 w-full text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Equipo } from '../../types';
-import { CheckCircle, User, CheckCircle as EmptyIcon } from 'lucide-react';
+import { CheckCircle, User, CheckCircle as EmptyIcon, Calendar, AlertTriangle } from 'lucide-react';
 
 interface MaintenanceTableProps {
   equipos: Equipo[];
@@ -21,7 +21,7 @@ export const MaintenanceTable: React.FC<MaintenanceTableProps> = ({ equipos, loa
               <th className="px-6 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Código</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Equipo</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Responsable (Previo)</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Problema Reportado</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Origen / Problema</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-amber-800 uppercase">Acción</th>
             </tr>
           </thead>
@@ -40,7 +40,19 @@ export const MaintenanceTable: React.FC<MaintenanceTableProps> = ({ equipos, loa
                       </div>
                    ) : <span className="text-slate-400 italic">Sin asignar</span>}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{e.observaciones}</td>
+                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                  {e.observaciones && e.observaciones.toLowerCase().includes('programado') ? (
+                     <div className="flex items-center gap-1.5 text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded w-fit">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Mantenimiento Programado</span>
+                     </div>
+                  ) : (
+                    <div className="flex items-start gap-1.5 text-red-700 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5" />
+                        <span>{e.observaciones || 'Falla no especificada'}</span>
+                    </div>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <button 
                     onClick={() => onFinalize(e)}

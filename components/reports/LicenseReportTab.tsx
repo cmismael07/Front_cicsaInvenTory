@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Licencia, TipoLicencia, Usuario } from '../../types';
 import { reportService } from '../../services/reportService';
 import { Filter, User, Box, Layers, Download, Key, Printer } from 'lucide-react';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { openPrintPreview, printCustomHTML } from '../../utils/documentGenerator';
 
 export const LicenseReportTab: React.FC = () => {
@@ -60,10 +60,9 @@ export const LicenseReportTab: React.FC = () => {
     return filteredData.map(l => ({
       'Tipo Licencia': l.tipo_nombre,
       'Clave / ID': l.clave,
-      'Vencimiento': l.fecha_vencimiento,
-      'Estado': l.usuario_id ? 'Asignada' : 'Disponible',
-      'Usuario': l.usuario_nombre || '-',
-      'Departamento': l.usuario_departamento || '-'
+      'Usuario Asignado': l.usuario_nombre || '-', // Alineado con UI
+      'Departamento': l.usuario_departamento || '-',
+      'Vencimiento': l.fecha_vencimiento
     }));
   };
 
@@ -201,7 +200,7 @@ export const LicenseReportTab: React.FC = () => {
                 <label className="text-[10px] font-bold text-transparent uppercase mb-1">.</label>
                 <div className="flex gap-2">
                     <button 
-                        onClick={() => downloadCSV(prepareExportData(), 'Reporte_Licencias_Asignadas')}
+                        onClick={() => generateExcelFromData(prepareExportData(), 'Reporte_Licencias_Asignadas')}
                         className="flex items-center gap-2 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded text-sm font-medium h-[34px]"
                     >
                         <Download className="w-4 h-4" /> Exportar

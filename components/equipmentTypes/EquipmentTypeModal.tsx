@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { Save } from 'lucide-react';
@@ -8,17 +9,21 @@ interface EquipmentTypeModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingItem: TipoEquipo | null;
-  onSubmit: (data: { nombre: string; descripcion: string }) => Promise<boolean>;
+  onSubmit: (data: { nombre: string; descripcion: string; frecuencia_anual: number }) => Promise<boolean>;
 }
 
 export const EquipmentTypeModal: React.FC<EquipmentTypeModalProps> = ({ isOpen, onClose, editingItem, onSubmit }) => {
-  const [formData, setFormData] = useState({ nombre: '', descripcion: '' });
+  const [formData, setFormData] = useState({ nombre: '', descripcion: '', frecuencia_anual: 1 });
 
   useEffect(() => {
     if (editingItem) {
-      setFormData({ nombre: editingItem.nombre, descripcion: editingItem.descripcion });
+      setFormData({ 
+        nombre: editingItem.nombre, 
+        descripcion: editingItem.descripcion,
+        frecuencia_anual: editingItem.frecuencia_anual ?? 1 
+      });
     } else {
-      setFormData({ nombre: '', descripcion: '' });
+      setFormData({ nombre: '', descripcion: '', frecuencia_anual: 1 });
     }
   }, [editingItem, isOpen]);
 
@@ -27,7 +32,7 @@ export const EquipmentTypeModal: React.FC<EquipmentTypeModalProps> = ({ isOpen, 
     const success = await onSubmit(formData);
     if (success) {
         onClose();
-        setFormData({ nombre: '', descripcion: '' });
+        setFormData({ nombre: '', descripcion: '', frecuencia_anual: 1 });
     }
   };
 
@@ -55,6 +60,22 @@ export const EquipmentTypeModal: React.FC<EquipmentTypeModalProps> = ({ isOpen, 
           />
         </div>
         
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Mantenimientos por Año</label>
+          <input 
+            type="number" 
+            min="0"
+            max="12"
+            required
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            value={formData.frecuencia_anual}
+            onChange={e => setFormData({...formData, frecuencia_anual: Number(e.target.value)})}
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            0 = Excluido del plan anual. 1 = Anual. 2 = Semestral. 4 = Trimestral. 12 = Mensual.
+          </p>
+        </div>
+
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">
             Cancelar

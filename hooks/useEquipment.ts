@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo } from '../types';
 import { equipmentService, catalogService } from '../services/equipmentService';
-import { generateAssignmentDocument } from '../utils/documentGenerator';
+import { generateAssignmentDocument, getAssignmentDocumentHTML } from '../utils/documentGenerator';
 import Swal from 'sweetalert2';
 
 export type ModalAction = 'CREATE' | 'EDIT' | 'ASSIGN' | 'RETURN' | 'BAJA' | 'TO_MAINTENANCE' | 'MARK_DISPOSAL' | null;
@@ -80,9 +80,59 @@ export const useEquipment = () => {
       } else if (action === 'EDIT' && equipo) {
         await equipmentService.update(equipo.id, formData);
       } else if (action === 'ASSIGN' && equipo) {
-        await equipmentService.assign(equipo.id, formData.usuario_id, formData.ubicacion, formData.observaciones);
+        
+        // --- VALIDACIÓN DE TIPO ÚNICO POR USUARIO ---
+        const targetUserId = Number(formData.usuario_id);
+        const targetTypeId = equipo.tipo_equipo_id;
+
+        // Buscar si el usuario ya tiene un equipo activo de este tipo
+        const existingAssignment = equipos.find(e => 
+            e.responsable_id === targetUserId && 
+            e.tipo_equipo_id === targetTypeId &&
+            e.estado === EstadoEquipo.ACTIVO
+        );
+
+        if (existingAssignment) {
+            Swal.fire({
+                title: 'Asignación no permitida',
+                text: `El usuario ya tiene asignado un equipo del tipo "${equipo.tipo_nombre}" (Código: ${existingAssignment.codigo_activo}). Debe realizar la devolución del anterior antes de asignar uno nuevo.`,
+                icon: 'warning',
+                confirmButtonColor: '#f59e0b'
+            });
+            return false;
+        }
+        // ----------------------------------------------
+
+        // 1. Obtener configuración de correo
+        const emailConfig = await equipmentService.getEmailConfig();
         const assignedUser = usuarios.find(u => u.id === Number(formData.usuario_id));
-        if (assignedUser) generateAssignmentDocument(assignedUser, equipo);
+        
+        // 2. Generar HTML del reporte
+        let htmlReport = '';
+        if (assignedUser) {
+            htmlReport = getAssignmentDocumentHTML(assignedUser, equipo);
+        }
+
+        // 3. Evaluar lógica: Si notificar está activo, enviar HTML. Si no, imprimir.
+        if (emailConfig.notificar_asignacion) {
+            // Enviar con el HTML como "adjunto" simulado
+            await equipmentService.assign(equipo.id, formData.usuario_id, formData.ubicacion, formData.observaciones, htmlReport);
+            Swal.fire({
+                title: 'Asignado',
+                text: 'Equipo asignado correctamente. Se ha enviado el acta de entrega por correo electrónico.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb'
+            });
+        } else {
+            // Asignación estándar sin enviar HTML (la API no enviará correo si check está false, pero por seguridad mandamos undefined)
+            await equipmentService.assign(equipo.id, formData.usuario_id, formData.ubicacion, formData.observaciones);
+            
+            // Imprimir localmente
+            if (assignedUser) {
+                generateAssignmentDocument(assignedUser, equipo);
+            }
+        }
+
       } else if (action === 'RETURN' && equipo) {
         const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
         await equipmentService.return(equipo.id, formData.observaciones, Number(formData.ubicacion_id), bodega?.nombre || 'Bodega');
@@ -90,7 +140,7 @@ export const useEquipment = () => {
         const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
         await equipmentService.markForDisposal(equipo.id, formData.observaciones, Number(formData.ubicacion_id), bodega?.nombre || 'Bodega IT');
       } else if (action === 'BAJA' && equipo) {
-        await equipmentService.dispose(equipo.id, formData.observaciones);
+        await equipmentService.dispose(equipo.id, formData.observaciones, formData.evidenceFile);
       } else if (action === 'TO_MAINTENANCE' && equipo) {
         await equipmentService.sendToMaintenance(equipo.id, formData.observaciones);
       }

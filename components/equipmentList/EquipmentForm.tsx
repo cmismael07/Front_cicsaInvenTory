@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo } from '../../types';
-import { Save } from 'lucide-react';
+import { Save, Upload, X, FileText } from 'lucide-react';
 import { ModalAction } from '../../hooks/useEquipment';
 
 interface EquipmentFormProps {
@@ -34,13 +34,22 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
     return { observaciones: '' };
   });
 
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const success = await onSubmit(formData);
+    // Merge file into data if exists
+    const dataToSubmit = { ...formData, evidenceFile };
+    const success = await onSubmit(dataToSubmit);
     if (!success) setLoading(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEvidenceFile(e.target.files[0]);
+    }
   };
 
   const isLaptop = () => {
@@ -167,11 +176,39 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
 
       {/* --- BAJA / MAINTENANCE --- */}
       {['BAJA', 'TO_MAINTENANCE'].includes(action || '') && (
-        <div>
-           <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Falla</label>
-           <textarea required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" rows={3}
-              value={formData.observaciones} onChange={e => setFormData({...formData, observaciones: e.target.value})} />
-        </div>
+        <>
+          <div>
+             <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Falla</label>
+             <textarea required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" rows={3}
+                value={formData.observaciones} onChange={e => setFormData({...formData, observaciones: e.target.value})} />
+          </div>
+          
+          {action === 'BAJA' && (
+            <div className="pt-2">
+               <label className="block text-sm font-medium text-slate-700 mb-2">Evidencia de Baja (Opcional)</label>
+               {!evidenceFile ? (
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                          <Upload className="w-6 h-6 text-slate-400 mb-1" />
+                          <p className="text-xs text-slate-500">Subir Informe Técnico / Foto</p>
+                      </div>
+                      <input type="file" className="hidden" accept="image/*,application/pdf" onChange={handleFileChange} />
+                  </label>
+               ) : (
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-blue-800 truncate">{evidenceFile.name}</p>
+                          <p className="text-xs text-blue-600">{(evidenceFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button type="button" onClick={() => setEvidenceFile(null)} className="text-slate-400 hover:text-red-500">
+                          <X className="w-4 h-4" />
+                      </button>
+                  </div>
+               )}
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex justify-end gap-3 pt-4 border-t">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Equipo, EstadoEquipo } from '../../types';
 import { MoreVertical, Edit, UserCheck, RotateCcw, Wrench, Archive, Trash2, Box, User } from 'lucide-react';
@@ -20,8 +21,8 @@ export const EquipmentTable: React.FC<EquipmentTableProps> = ({ groupedEquipos, 
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" onClick={() => setOpenMenuId(null)}>
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden pb-32" onClick={() => setOpenMenuId(null)}>
+      <div className="overflow-x-auto min-h-[400px]">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -74,20 +75,26 @@ export const EquipmentTable: React.FC<EquipmentTableProps> = ({ groupedEquipos, 
                          <MoreVertical className="w-5 h-5" />
                        </button>
                        {openMenuId === equipo.id && (
-                         <div className="absolute right-8 top-0 w-48 bg-white rounded-lg shadow-lg border border-slate-100 z-50 py-1">
-                           <button onClick={() => onAction('EDIT', equipo)} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex gap-2"><Edit className="w-4 h-4"/> Editar</button>
+                         <div className="absolute right-8 top-0 w-52 bg-white rounded-lg shadow-xl border border-slate-100 z-50 py-1 text-left">
+                           <button onClick={() => onAction('EDIT', equipo)} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex gap-2 text-slate-700"><Edit className="w-4 h-4"/> Editar</button>
+                           
                            {(equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.PARA_BAJA) && (
                               <button onClick={() => onAction('ASSIGN', equipo)} className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex gap-2"><UserCheck className="w-4 h-4"/> Asignar</button>
                            )}
+                           
                            {equipo.estado === EstadoEquipo.ACTIVO && (
                               <button onClick={() => onAction('RETURN', equipo)} className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex gap-2"><RotateCcw className="w-4 h-4"/> Recepcionar</button>
                            )}
-                           {['ACTIVO', 'DISPONIBLE', 'PARA_BAJA'].includes(equipo.estado) && (
-                              <button onClick={() => onAction('TO_MAINTENANCE', equipo)} className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex gap-2"><Wrench className="w-4 h-4"/> Mantenimiento</button>
+                           
+                           {/* Opción Enviar a Mantenimiento visible para equipos Activos, Disponibles o Para Baja */}
+                           {(equipo.estado === EstadoEquipo.ACTIVO || equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.PARA_BAJA) && (
+                              <button onClick={() => onAction('TO_MAINTENANCE', equipo)} className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex gap-2"><Wrench className="w-4 h-4"/> Enviar a Mantenimiento</button>
                            )}
-                           {!['BAJA', 'PARA_BAJA'].includes(equipo.estado) && (
+
+                           {!['Baja', 'Para Baja'].includes(equipo.estado) && (
                               <button onClick={() => onAction('MARK_DISPOSAL', equipo)} className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex gap-2"><Archive className="w-4 h-4"/> Pre-Baja</button>
                            )}
+                           
                            {equipo.estado !== EstadoEquipo.BAJA && (
                               <button onClick={() => onAction('BAJA', equipo)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex gap-2"><Trash2 className="w-4 h-4"/> Dar Baja</button>
                            )}

@@ -1,6 +1,6 @@
-
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia } from '../types';
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento, EmailConfig } from '../types';
 import { liveApi } from './liveApi';
+import Swal from 'sweetalert2';
 
 // --- CONFIGURACIÓN DEL BACKEND ---
 // Cambia esto a TRUE cuando tengas tu backend Laravel corriendo en localhost:8000
@@ -9,11 +9,17 @@ const USE_LIVE_API = false;
 
 // --- Mock Data Initialization ---
 
+let MOCK_CIUDADES: Ciudad[] = [
+  { id: 1, nombre: 'Guayaquil' },
+  { id: 2, nombre: 'Quito' },
+  { id: 3, nombre: 'Cuenca' }
+];
+
 let MOCK_DEPARTAMENTOS: Departamento[] = [
-  { id: 1, nombre: 'Tecnología (IT)', es_bodega: true },
-  { id: 2, nombre: 'Recursos Humanos', es_bodega: false },
-  { id: 3, nombre: 'Ventas', es_bodega: false },
-  { id: 4, nombre: 'Finanzas', es_bodega: false }
+  { id: 1, nombre: 'Tecnología (IT)', es_bodega: true, ciudad_id: 1, ciudad_nombre: 'Guayaquil' },
+  { id: 2, nombre: 'Recursos Humanos', es_bodega: false, ciudad_id: 2, ciudad_nombre: 'Quito' },
+  { id: 3, nombre: 'Ventas', es_bodega: false, ciudad_id: 1, ciudad_nombre: 'Guayaquil' },
+  { id: 4, nombre: 'Finanzas', es_bodega: false, ciudad_id: 3, ciudad_nombre: 'Cuenca' }
 ];
 
 let MOCK_PUESTOS: Puesto[] = [
@@ -34,19 +40,19 @@ let MOCK_USERS: Usuario[] = [
 ];
 
 let MOCK_TIPOS: TipoEquipo[] = [
-  { id: 1, nombre: 'Laptop', descripcion: 'Computadora portátil' },
-  { id: 2, nombre: 'Desktop', descripcion: 'Computadora de escritorio' },
-  { id: 3, nombre: 'Monitor', descripcion: 'Pantalla externa' },
-  { id: 4, nombre: 'Impresora', descripcion: 'Impresora láser o inyección' },
+  { id: 1, nombre: 'Laptop', descripcion: 'Computadora portátil', frecuencia_anual: 2 },
+  { id: 2, nombre: 'Desktop', descripcion: 'Computadora de escritorio', frecuencia_anual: 1 },
+  { id: 3, nombre: 'Monitor', descripcion: 'Pantalla externa', frecuencia_anual: 0 },
+  { id: 4, nombre: 'Impresora', descripcion: 'Impresora láser o inyección', frecuencia_anual: 1 },
 ];
 
 let MOCK_EQUIPOS: Equipo[] = [
-  { id: 1, codigo_activo: 'EQ-2023-001', numero_serie: 'SN123456', marca: 'Dell', modelo: 'Latitude 5420', tipo_equipo_id: 1, tipo_nombre: 'Laptop', serie_cargador: 'CH-999111', fecha_compra: '2023-01-15', valor_compra: 1200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', responsable_id: 3, responsable_nombre: 'Maria Ventas', observaciones: 'Asignado a ventas' },
-  { id: 2, codigo_activo: 'EQ-2021-045', numero_serie: 'SN987654', marca: 'HP', modelo: 'ProBook 450', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2021-03-10', valor_compra: 900, anos_garantia: 3, estado: EstadoEquipo.DISPONIBLE, ubicacion_id: 2, ubicacion_nombre: 'Bodega IT', observaciones: 'Reingresado, listo para asignar' },
-  { id: 3, codigo_activo: 'EQ-2020-012', numero_serie: 'SN456123', marca: 'Lenovo', modelo: 'ThinkCentre M720', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2020-05-20', valor_compra: 800, anos_garantia: 4, estado: EstadoEquipo.EN_MANTENIMIENTO, ubicacion_id: 3, ubicacion_nombre: 'Taller Externo', observaciones: 'Falla en disco duro' },
-  { id: 4, codigo_activo: 'EQ-2019-099', numero_serie: 'SN112233', marca: 'Dell', modelo: 'Optiplex 3060', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2019-02-01', valor_compra: 750, anos_garantia: 3, estado: EstadoEquipo.BAJA, ubicacion_id: 4, ubicacion_nombre: 'Almacén Bajas', observaciones: 'Obsoleto, pantalla azul' },
-  { id: 5, codigo_activo: 'EQ-2024-005', numero_serie: 'SN998877', marca: 'Apple', modelo: 'MacBook Air M2', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2024-02-20', valor_compra: 1400, anos_garantia: 1, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Dirección General', observaciones: '' },
-  { id: 6, codigo_activo: 'EQ-2020-055', numero_serie: 'SN554433', marca: 'HP', modelo: 'EliteDisplay', tipo_equipo_id: 3, tipo_nombre: 'Monitor', fecha_compra: '2020-06-15', valor_compra: 200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', observaciones: '' },
+  { id: 1, codigo_activo: 'EQ-2023-001', numero_serie: 'SN123456', marca: 'Dell', modelo: 'Latitude 5420', tipo_equipo_id: 1, tipo_nombre: 'Laptop', serie_cargador: 'CH-999111', fecha_compra: '2023-01-15', valor_compra: 1200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', responsable_id: 3, responsable_nombre: 'Maria Ventas', observaciones: 'Asignado a ventas', frecuencia_mantenimiento: FrecuenciaMantenimiento.SEMESTRAL },
+  { id: 2, codigo_activo: 'EQ-2021-045', numero_serie: 'SN987654', marca: 'HP', modelo: 'ProBook 450', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2021-03-10', valor_compra: 900, anos_garantia: 3, estado: EstadoEquipo.DISPONIBLE, ubicacion_id: 2, ubicacion_nombre: 'Bodega IT', observaciones: 'Reingresado, listo para asignar', frecuencia_mantenimiento: FrecuenciaMantenimiento.TRIMESTRAL },
+  { id: 3, codigo_activo: 'EQ-2020-012', numero_serie: 'SN456123', marca: 'Lenovo', modelo: 'ThinkCentre M720', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2020-05-20', valor_compra: 800, anos_garantia: 4, estado: EstadoEquipo.EN_MANTENIMIENTO, ubicacion_id: 3, ubicacion_nombre: 'Taller Externo', observaciones: 'Falla en disco duro', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
+  { id: 4, codigo_activo: 'EQ-2019-099', numero_serie: 'SN112233', marca: 'Dell', modelo: 'Optiplex 3060', tipo_equipo_id: 2, tipo_nombre: 'Desktop', fecha_compra: '2019-02-01', valor_compra: 750, anos_garantia: 3, estado: EstadoEquipo.BAJA, ubicacion_id: 4, ubicacion_nombre: 'Almacén Bajas', observaciones: 'Obsoleto, pantalla azul', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
+  { id: 5, codigo_activo: 'EQ-2024-005', numero_serie: 'SN998877', marca: 'Apple', modelo: 'MacBook Air M2', tipo_equipo_id: 1, tipo_nombre: 'Laptop', fecha_compra: '2024-02-20', valor_compra: 1400, anos_garantia: 1, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Dirección General', observaciones: '', frecuencia_mantenimiento: FrecuenciaMantenimiento.BIMESTRAL },
+  { id: 6, codigo_activo: 'EQ-2020-055', numero_serie: 'SN554433', marca: 'HP', modelo: 'EliteDisplay', tipo_equipo_id: 3, tipo_nombre: 'Monitor', fecha_compra: '2020-06-15', valor_compra: 200, anos_garantia: 3, estado: EstadoEquipo.ACTIVO, ubicacion_id: 1, ubicacion_nombre: 'Piso 2 - Ventas', observaciones: '', frecuencia_mantenimiento: FrecuenciaMantenimiento.ANUAL },
 ];
 
 let MOCK_HISTORIAL: HistorialMovimiento[] = [
@@ -59,7 +65,7 @@ let MOCK_ASIGNACIONES: HistorialAsignacion[] = [
 ];
 
 let MOCK_MANTENIMIENTOS: RegistroMantenimiento[] = [
-  { id: 1, equipo_id: 3, equipo_codigo: 'EQ-2020-012', equipo_modelo: 'ThinkCentre M720', fecha: '2024-03-10', tipo_mantenimiento: 'Correctivo', proveedor: 'Taller Externo', costo: 120, descripcion: 'Cambio de Disco Duro' }
+  { id: 1, equipo_id: 3, equipo_codigo: 'EQ-2020-012', equipo_modelo: 'ThinkCentre M720', fecha: '2024-03-10', tipo_mantenimiento: 'Correctivo', proveedor: 'Taller Externo', costo: 120, descripcion: 'Cambio de Disco Duro', archivo_orden: 'orden_firmada_001.pdf' }
 ];
 
 let MOCK_TIPOS_LICENCIA: TipoLicencia[] = [
@@ -78,7 +84,68 @@ let MOCK_NOTIFICACIONES: Notificacion[] = [
   { id: 2, titulo: 'Mantenimiento programado', mensaje: 'Mantenimiento general de servidores el 25 de Marzo.', fecha: '2024-03-18', leido: true, tipo: 'info' }
 ];
 
+// --- Mock Planning Data ---
+let MOCK_PLANES: PlanMantenimiento[] = [];
+let MOCK_DETALLES_PLAN: DetallePlan[] = [];
+let MOCK_EVIDENCIAS: EvidenciaMantenimiento[] = [];
+
+// --- Email Configuration ---
+let MOCK_EMAIL_CONFIG: EmailConfig = {
+    remitente: 'Sistema InvenTory <notificaciones@empresa.com>',
+    correos_copia: ['soporte@empresa.com'],
+    notificar_asignacion: true,
+    notificar_mantenimiento: true,
+    dias_anticipacion_alerta: 15,
+    smtp_host: 'smtp.office365.com',
+    smtp_port: '587'
+};
+
 const simulateDelay = () => new Promise(resolve => setTimeout(resolve, 500));
+
+// Helper: Send Notification Email (Simulated)
+const sendNotificationEmail = async (
+    targetUserId: number | undefined, 
+    subject: string, 
+    message: string,
+    eventType: 'asignacion' | 'mantenimiento',
+    attachmentName?: string
+) => {
+    // Check global switches
+    if (eventType === 'asignacion' && !MOCK_EMAIL_CONFIG.notificar_asignacion) return;
+    if (eventType === 'mantenimiento' && !MOCK_EMAIL_CONFIG.notificar_mantenimiento) return;
+
+    const recipients: string[] = [];
+    
+    // 1. Add Target User if exists
+    if (targetUserId) {
+        const user = MOCK_USERS.find(u => u.id === targetUserId);
+        if (user && user.correo) {
+            recipients.push(user.correo);
+        }
+    }
+
+    // 2. Add CCs
+    if (MOCK_EMAIL_CONFIG.correos_copia && MOCK_EMAIL_CONFIG.correos_copia.length > 0) {
+        recipients.push(...MOCK_EMAIL_CONFIG.correos_copia);
+    }
+    
+    // Filter empty
+    const uniqueRecipients = [...new Set(recipients.filter(r => r && r.trim() !== ''))];
+
+    if (uniqueRecipients.length > 0) {
+        console.log(`[EMAIL SIMULADO]
+        De: ${MOCK_EMAIL_CONFIG.remitente}
+        Para: ${uniqueRecipients.join(', ')}
+        Asunto: ${subject}
+        Mensaje: ${message}
+        Adjunto: ${attachmentName || 'Ninguno'}
+        -----------------------------------`);
+    } else {
+        console.warn("[EMAIL SIMULADO] No hay destinatarios configurados para enviar el correo.");
+    }
+};
+
+const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 // --- API Implementation ---
 
@@ -102,15 +169,27 @@ export const api = {
   createDepartamento: async (data: any) => {
     await simulateDelay();
     const newId = MOCK_DEPARTAMENTOS.length + 1;
-    const newItem = { ...data, id: newId };
+    const ciudad = MOCK_CIUDADES.find(c => c.id === Number(data.ciudad_id));
+    const newItem = { 
+        ...data, 
+        id: newId,
+        ciudad_nombre: ciudad?.nombre
+    };
     MOCK_DEPARTAMENTOS.push(newItem);
     return newItem;
   },
   updateDepartamento: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_DEPARTAMENTOS.findIndex(d => d.id === id);
-    if (idx >= 0) MOCK_DEPARTAMENTOS[idx] = { ...MOCK_DEPARTAMENTOS[idx], ...data };
-    return MOCK_DEPARTAMENTOS[idx];
+    if (idx >= 0) {
+        const ciudad = data.ciudad_id ? MOCK_CIUDADES.find(c => c.id === Number(data.ciudad_id)) : null;
+        MOCK_DEPARTAMENTOS[idx] = { 
+            ...MOCK_DEPARTAMENTOS[idx], 
+            ...data,
+            ...(ciudad ? { ciudad_nombre: ciudad.nombre } : {}) 
+        };
+        return MOCK_DEPARTAMENTOS[idx];
+    }
   },
   deleteDepartamento: async (id: number) => {
     await simulateDelay();
@@ -135,450 +214,935 @@ export const api = {
   },
   updatePuesto: async (id: number, data: any) => {
     await simulateDelay();
-    const idx = MOCK_PUESTOS.findIndex(d => d.id === id);
-    if (idx >= 0) MOCK_PUESTOS[idx] = { ...MOCK_PUESTOS[idx], ...data };
-    return MOCK_PUESTOS[idx];
+    const idx = MOCK_PUESTOS.findIndex(p => p.id === id);
+    if (idx >= 0) {
+        MOCK_PUESTOS[idx] = { ...MOCK_PUESTOS[idx], ...data };
+        return MOCK_PUESTOS[idx];
+    }
   },
   deletePuesto: async (id: number) => {
     await simulateDelay();
-    // VALIDACIÓN: Verificar si hay usuarios asignados a este puesto
+    // VALIDACIÓN
     const hasUsers = MOCK_USERS.some(u => u.puesto_id === id);
     if (hasUsers) {
       throw new Error("No se puede eliminar este puesto porque tiene usuarios asignados.");
     }
-    const idx = MOCK_PUESTOS.findIndex(d => d.id === id);
+    const idx = MOCK_PUESTOS.findIndex(p => p.id === id);
     if (idx >= 0) {
-      MOCK_PUESTOS.splice(idx, 1);
+        MOCK_PUESTOS.splice(idx, 1);
     }
+  },
+
+  getCiudades: async () => { await simulateDelay(); return [...MOCK_CIUDADES]; },
+  createCiudad: async (data: any) => {
+      await simulateDelay();
+      const newId = MOCK_CIUDADES.length + 1;
+      const newItem = { ...data, id: newId };
+      MOCK_CIUDADES.push(newItem);
+      return newItem;
+  },
+  updateCiudad: async (id: number, data: any) => {
+      await simulateDelay();
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) {
+          MOCK_CIUDADES[idx] = { ...MOCK_CIUDADES[idx], ...data };
+          return MOCK_CIUDADES[idx];
+      }
+  },
+  deleteCiudad: async (id: number) => {
+      await simulateDelay();
+      const hasDepts = MOCK_DEPARTAMENTOS.some(d => d.ciudad_id === id);
+      if (hasDepts) throw new Error("No se puede eliminar, tiene departamentos asignados.");
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) MOCK_CIUDADES.splice(idx, 1);
   },
 
   // Users
   getUsuarios: async () => { await simulateDelay(); return [...MOCK_USERS]; },
-  createUsuario: async (data: Usuario) => {
+  createUsuario: async (data: any) => {
     await simulateDelay();
-    // Enrich with Dept/Puesto names
-    const dept = MOCK_DEPARTAMENTOS.find(d => d.id === data.departamento_id);
-    const puesto = MOCK_PUESTOS.find(p => p.id === data.puesto_id);
-    const newUser = { 
-        ...data, 
-        id: MOCK_USERS.length + 1,
-        nombre_completo: buildName(data.nombres, data.apellidos),
-        departamento_nombre: dept?.nombre,
-        puesto_nombre: puesto?.nombre,
-        password: data.password || '123'
+    const newId = MOCK_USERS.length + 1;
+    const dept = MOCK_DEPARTAMENTOS.find(d => d.id === Number(data.departamento_id));
+    const puesto = MOCK_PUESTOS.find(p => p.id === Number(data.puesto_id));
+    
+    const newUser = {
+      ...data,
+      id: newId,
+      nombre_completo: `${data.nombres} ${data.apellidos}`,
+      departamento_nombre: dept?.nombre,
+      puesto_nombre: puesto?.nombre
     };
     MOCK_USERS.push(newUser);
     return newUser;
   },
-  updateUsuario: async (id: number, data: Partial<Usuario>) => {
+  updateUsuario: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_USERS.findIndex(u => u.id === id);
     if (idx >= 0) {
-        const dept = data.departamento_id ? MOCK_DEPARTAMENTOS.find(d => d.id === data.departamento_id) : null;
-        const puesto = data.puesto_id ? MOCK_PUESTOS.find(p => p.id === data.puesto_id) : null;
-        
-        MOCK_USERS[idx] = { 
-            ...MOCK_USERS[idx], 
-            ...data,
-            ...(data.nombres || data.apellidos ? { nombre_completo: buildName(data.nombres || MOCK_USERS[idx].nombres, data.apellidos || MOCK_USERS[idx].apellidos) } : {}),
-            ...(dept ? { departamento_nombre: dept.nombre } : {}),
-            ...(puesto ? { puesto_nombre: puesto.nombre } : {})
-        };
-        return MOCK_USERS[idx];
+      const dept = data.departamento_id ? MOCK_DEPARTAMENTOS.find(d => d.id === Number(data.departamento_id)) : null;
+      const puesto = data.puesto_id ? MOCK_PUESTOS.find(p => p.id === Number(data.puesto_id)) : null;
+      
+      MOCK_USERS[idx] = {
+        ...MOCK_USERS[idx],
+        ...data,
+        ...(data.nombres || data.apellidos ? { nombre_completo: `${data.nombres || MOCK_USERS[idx].nombres} ${data.apellidos || MOCK_USERS[idx].apellidos}` } : {}),
+        ...(dept ? { departamento_nombre: dept.nombre } : {}),
+        ...(puesto ? { puesto_nombre: puesto.nombre } : {})
+      };
+      return MOCK_USERS[idx];
     }
-    throw new Error("Usuario no encontrado");
   },
   deleteUsuario: async (id: number) => {
-     // Soft delete usually, but for mock delete
-     await simulateDelay();
-     MOCK_USERS = MOCK_USERS.filter(u => u.id !== id);
+      await simulateDelay();
+      const idx = MOCK_USERS.findIndex(u => u.id === id);
+      if (idx >= 0) MOCK_USERS.splice(idx, 1);
   },
 
   // Equipment Types
   getTiposEquipo: async () => { await simulateDelay(); return [...MOCK_TIPOS]; },
   createTipoEquipo: async (data: any) => {
     await simulateDelay();
-    const newItem = { ...data, id: MOCK_TIPOS.length + 1 };
+    const newId = MOCK_TIPOS.length + 1;
+    const newItem = { ...data, id: newId };
     MOCK_TIPOS.push(newItem);
     return newItem;
   },
   updateTipoEquipo: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_TIPOS.findIndex(t => t.id === id);
-    if (idx >= 0) MOCK_TIPOS[idx] = { ...MOCK_TIPOS[idx], ...data };
-    return MOCK_TIPOS[idx];
+    if (idx >= 0) {
+      MOCK_TIPOS[idx] = { ...MOCK_TIPOS[idx], ...data };
+      return MOCK_TIPOS[idx];
+    }
   },
   deleteTipoEquipo: async (id: number) => {
     await simulateDelay();
-    
-    // VALIDACIÓN: No permitir eliminar si hay equipos asociados
-    const hasLinkedEquipments = MOCK_EQUIPOS.some(e => e.tipo_equipo_id === id);
-    if (hasLinkedEquipments) {
-      throw new Error("No se puede eliminar este tipo de equipo porque existen activos asociados a él.");
-    }
-
-    MOCK_TIPOS = MOCK_TIPOS.filter(t => t.id !== id);
+    const idx = MOCK_TIPOS.findIndex(t => t.id === id);
+    if (idx >= 0) MOCK_TIPOS.splice(idx, 1);
   },
 
   // Equipment
   getEquipos: async () => { await simulateDelay(); return [...MOCK_EQUIPOS]; },
   createEquipo: async (data: any) => {
     await simulateDelay();
-    const tipo = MOCK_TIPOS.find(t => t.id === data.tipo_equipo_id);
-    // Note: ubicacion_nombre should be passed from frontend or resolved here if we had a full location catalog
-    const newEq = { 
-        ...data, 
-        id: MOCK_EQUIPOS.length + 1,
-        tipo_nombre: tipo?.nombre,
-    };
-    MOCK_EQUIPOS.push(newEq);
+    const newId = MOCK_EQUIPOS.length + 1;
+    const tipo = MOCK_TIPOS.find(t => t.id === Number(data.tipo_equipo_id));
     
+    const newItem = {
+      ...data,
+      id: newId,
+      tipo_nombre: tipo?.nombre,
+      estado: EstadoEquipo.DISPONIBLE
+    };
+    MOCK_EQUIPOS.push(newItem);
+    // Log Creation
     MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: newEq.id,
-        equipo_codigo: newEq.codigo_activo,
-        tipo_accion: 'CREACION',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Ingreso inicial (Loc: ${data.ubicacion_nombre || 'N/A'})`
+      id: MOCK_HISTORIAL.length + 1,
+      equipo_id: newId,
+      equipo_codigo: newItem.codigo_activo,
+      tipo_accion: 'CREACION',
+      fecha: new Date().toISOString().split('T')[0],
+      usuario_responsable: 'Sistema',
+      detalle: 'Ingreso al inventario'
     });
-    return newEq;
+    return newItem;
   },
-  updateEquipo: async (id: number, data: Partial<Equipo>) => {
+  updateEquipo: async (id: number, data: any) => {
     await simulateDelay();
     const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
     if (idx >= 0) {
-        const oldData = MOCK_EQUIPOS[idx];
-        MOCK_EQUIPOS[idx] = { ...oldData, ...data };
+      const oldData = MOCK_EQUIPOS[idx];
+      const tipo = data.tipo_equipo_id ? MOCK_TIPOS.find(t => t.id === Number(data.tipo_equipo_id)) : null;
+      
+      MOCK_EQUIPOS[idx] = {
+        ...MOCK_EQUIPOS[idx],
+        ...data,
+        ...(tipo ? { tipo_nombre: tipo.nombre } : {})
+      };
+      
+      // Log Update (Optional, maybe specific fields)
+      return MOCK_EQUIPOS[idx];
+    }
+  },
+
+  // BULK OPERATIONS
+  bulkCreateEquipos: async (data: any[]) => {
+    await simulateDelay();
+    let count = 0;
+    
+    // Find default warehouse
+    const defaultBodega = MOCK_DEPARTAMENTOS.find(d => d.es_bodega) || MOCK_DEPARTAMENTOS[0];
+
+    data.forEach(row => {
+        // Find Type ID by name (insensitive)
+        const type = MOCK_TIPOS.find(t => t.nombre.toLowerCase() === row['Tipo Equipo']?.toLowerCase());
+        if (!type) return; // Skip invalid types
+
+        const newId = MOCK_EQUIPOS.length + 1 + count;
         
+        MOCK_EQUIPOS.push({
+            id: newId,
+            codigo_activo: row['Codigo Activo'],
+            numero_serie: row['Serie'],
+            marca: row['Marca'],
+            modelo: row['Modelo'],
+            tipo_equipo_id: type.id,
+            tipo_nombre: type.nombre,
+            fecha_compra: row['Fecha Compra'] || new Date().toISOString().split('T')[0],
+            valor_compra: parseFloat(row['Valor'] || '0'),
+            anos_garantia: 1,
+            estado: EstadoEquipo.DISPONIBLE,
+            ubicacion_id: defaultBodega.id,
+            ubicacion_nombre: defaultBodega.nombre,
+            observaciones: 'Migración Masiva'
+        });
+        
+        // Log
         MOCK_HISTORIAL.push({
             id: MOCK_HISTORIAL.length + 1,
-            equipo_id: id,
-            equipo_codigo: oldData.codigo_activo,
-            tipo_accion: 'EDICION',
+            equipo_id: newId,
+            equipo_codigo: row['Codigo Activo'],
+            tipo_accion: 'CREACION',
             fecha: new Date().toISOString().split('T')[0],
             usuario_responsable: 'Admin',
-            detalle: 'Actualización de datos'
+            detalle: 'Carga Masiva'
         });
-        return MOCK_EQUIPOS[idx];
-    }
-    throw new Error("Equipo no encontrado");
+        count++;
+    });
+    return count;
+  },
+
+  bulkCreateUsuarios: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_USERS.some(u => u.correo === row['Email'])) return; // Skip duplicates
+
+          const newId = MOCK_USERS.length + 1 + count;
+          MOCK_USERS.push({
+              id: newId,
+              nombres: row['Nombres'],
+              apellidos: row['Apellidos'],
+              nombre_completo: `${row['Nombres']} ${row['Apellidos']}`,
+              nombre_usuario: row['Usuario'],
+              numero_empleado: row['Numero Empleado'],
+              correo: row['Email'],
+              password: '123', // Default
+              rol: (row['Rol'] as RolUsuario) || RolUsuario.USUARIO,
+              activo: true
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreateLicencias: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          // Find Type or Create
+          let type = MOCK_TIPOS_LICENCIA.find(t => t.nombre.toLowerCase() === row['Tipo Software']?.toLowerCase());
+          if (!type && row['Tipo Software']) {
+              type = {
+                  id: MOCK_TIPOS_LICENCIA.length + 1,
+                  nombre: row['Tipo Software'],
+                  proveedor: row['Proveedor'] || 'Desconocido',
+                  descripcion: 'Creado por migración'
+              };
+              MOCK_TIPOS_LICENCIA.push(type);
+          }
+
+          if (type) {
+              const newId = MOCK_LICENCIAS.length + 1 + count;
+              MOCK_LICENCIAS.push({
+                  id: newId,
+                  tipo_id: type.id,
+                  tipo_nombre: type.nombre,
+                  clave: row['Clave'],
+                  fecha_compra: row['Fecha Compra'] || new Date().toISOString().split('T')[0],
+                  fecha_vencimiento: row['Fecha Vencimiento'] || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+                  usuario_id: null
+              });
+              count++;
+          }
+      });
+      return count;
+  },
+
+  bulkCreateDepartamentos: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_DEPARTAMENTOS.some(d => d.nombre.toLowerCase() === row['Nombre Departamento']?.toLowerCase())) return;
+
+          const ciudad = MOCK_CIUDADES.find(c => c.nombre.toLowerCase() === row['Ciudad']?.toLowerCase());
+          
+          const newId = MOCK_DEPARTAMENTOS.length + 1 + count;
+          MOCK_DEPARTAMENTOS.push({
+              id: newId,
+              nombre: row['Nombre Departamento'],
+              es_bodega: row['Es Bodega (SI/NO)']?.toUpperCase() === 'SI',
+              ciudad_id: ciudad?.id,
+              ciudad_nombre: ciudad?.nombre
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreatePuestos: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_PUESTOS.some(p => p.nombre.toLowerCase() === row['Nombre Cargo']?.toLowerCase())) return;
+
+          const newId = MOCK_PUESTOS.length + 1 + count;
+          MOCK_PUESTOS.push({
+              id: newId,
+              nombre: row['Nombre Cargo']
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreateAsignaciones: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      
+      data.forEach(row => {
+          // Find User by Email
+          const user = MOCK_USERS.find(u => u.correo === row['Correo Usuario']);
+          // Find Equipment by Code
+          const equipoIndex = MOCK_EQUIPOS.findIndex(e => e.codigo_activo === row['Codigo Activo']);
+          
+          if (user && equipoIndex >= 0) {
+              const equipo = MOCK_EQUIPOS[equipoIndex];
+              
+              // Only assign if currently available
+              if (equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.ACTIVO) {
+                  // Update Equipment
+                  MOCK_EQUIPOS[equipoIndex] = {
+                      ...equipo,
+                      estado: EstadoEquipo.ACTIVO,
+                      responsable_id: user.id,
+                      responsable_nombre: user.nombre_completo,
+                      ubicacion_nombre: row['Ubicacion Fisica'] || 'Oficina',
+                      observaciones: row['Observaciones'] || 'Migración Masiva'
+                  };
+
+                  // Log History
+                  MOCK_HISTORIAL.push({
+                      id: MOCK_HISTORIAL.length + 1,
+                      equipo_id: equipo.id,
+                      equipo_codigo: equipo.codigo_activo,
+                      tipo_accion: 'ASIGNACION',
+                      fecha: row['Fecha Asignacion'] || new Date().toISOString().split('T')[0],
+                      usuario_responsable: 'Admin',
+                      detalle: `Asignado por migración a ${user.nombre_completo}`
+                  });
+
+                  // Add Assignment Record
+                  MOCK_ASIGNACIONES.push({
+                      id: MOCK_ASIGNACIONES.length + 1,
+                      equipo_codigo: equipo.codigo_activo,
+                      equipo_modelo: equipo.modelo,
+                      usuario_nombre: user.nombre_completo,
+                      usuario_departamento: user.departamento_nombre || '',
+                      fecha_inicio: row['Fecha Asignacion'] || new Date().toISOString().split('T')[0],
+                      fecha_fin: null,
+                      ubicacion: row['Ubicacion Fisica'] || 'Oficina',
+                      archivo_pdf: undefined 
+                  });
+                  
+                  count++;
+              }
+          }
+      });
+      return count;
   },
 
   // Actions
-  asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string) => {
+  asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string, reporteHtml?: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    const user = MOCK_USERS.find(u => u.id === usuarioId);
-    if (!eq || !user) throw new Error("Equipo o Usuario no encontrado");
+    const equipoIdx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    const usuario = MOCK_USERS.find(u => u.id === Number(usuarioId));
+    
+    if (equipoIdx >= 0 && usuario) {
+      const equipo = MOCK_EQUIPOS[equipoIdx];
+      
+      // Update Equipment
+      MOCK_EQUIPOS[equipoIdx] = {
+        ...equipo,
+        estado: EstadoEquipo.ACTIVO,
+        responsable_id: usuario.id,
+        responsable_nombre: usuario.nombre_completo,
+        ubicacion_nombre: ubicacion, // Physical location desk/office
+        observaciones: observaciones || equipo.observaciones
+      };
 
-    // Close previous assignment if exists (though logic usually prevents assigning already assigned)
-    // ...
-
-    eq.estado = EstadoEquipo.ACTIVO;
-    eq.responsable_id = user.id;
-    eq.responsable_nombre = user.nombre_completo;
-    eq.ubicacion_nombre = ubicacion; // Specific location
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
+      // Add History
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: equipo.codigo_activo,
         tipo_accion: 'ASIGNACION',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Asignado a ${user.nombre_completo}`
-    });
+        detalle: `Asignado a ${usuario.nombre_completo}`
+      });
 
-    MOCK_ASIGNACIONES.push({
+      // Add Assignment History Record
+      // IMPORTANT: archivo_pdf inicial en undefined. No se marca como cargado hasta que se suba.
+      MOCK_ASIGNACIONES.push({
         id: MOCK_ASIGNACIONES.length + 1,
-        equipo_codigo: eq.codigo_activo,
-        equipo_modelo: eq.modelo,
-        usuario_nombre: user.nombre_completo,
-        usuario_departamento: user.departamento_nombre || '',
+        equipo_codigo: equipo.codigo_activo,
+        equipo_modelo: equipo.modelo,
+        usuario_nombre: usuario.nombre_completo,
+        usuario_departamento: usuario.departamento_nombre || '',
         fecha_inicio: new Date().toISOString().split('T')[0],
         fecha_fin: null,
         ubicacion: ubicacion,
-        archivo_pdf: undefined
-    });
-    
-    return eq;
+        archivo_pdf: undefined 
+      });
+      
+      // EMAIL TRIGGER
+      // Si se pasa HTML, se simula que es el adjunto, pero no afecta al archivo_pdf de la base de datos
+      let attachmentName = undefined;
+      if (reporteHtml && MOCK_EMAIL_CONFIG.notificar_asignacion) {
+          attachmentName = `acta_${equipo.codigo_activo}.pdf`;
+      }
+
+      await sendNotificationEmail(
+          usuario.id,
+          'Asignación de Equipo',
+          `Se le ha asignado el equipo ${equipo.tipo_nombre} ${equipo.marca} ${equipo.modelo} (Código: ${equipo.codigo_activo}).\nObservaciones: ${observaciones}.\n\nSe adjunta el acta de entrega.`,
+          'asignacion',
+          attachmentName
+      );
+    }
   },
 
   recepcionarEquipo: async (id: number, observaciones: string, ubicacionId?: number, ubicacionNombre?: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      const prevUser = MOCK_EQUIPOS[idx].responsable_nombre;
+      
+      MOCK_EQUIPOS[idx] = {
+        ...MOCK_EQUIPOS[idx],
+        estado: EstadoEquipo.DISPONIBLE,
+        responsable_id: undefined,
+        responsable_nombre: undefined,
+        ubicacion_id: ubicacionId || MOCK_EQUIPOS[idx].ubicacion_id,
+        ubicacion_nombre: ubicacionNombre || 'Bodega IT',
+        observaciones: observaciones
+      };
 
-    // Close active assignment
-    const activeAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === eq.codigo_activo && a.fecha_fin === null);
-    if (activeAssign) {
-        activeAssign.fecha_fin = new Date().toISOString().split('T')[0];
-    }
+      // Close Assignment History
+      const lastAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === MOCK_EQUIPOS[idx].codigo_activo && a.fecha_fin === null);
+      if (lastAssign) {
+        lastAssign.fecha_fin = new Date().toISOString().split('T')[0];
+      }
 
-    eq.estado = EstadoEquipo.DISPONIBLE;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    // Update location to warehouse
-    eq.ubicacion_id = ubicacionId || eq.ubicacion_id; 
-    eq.ubicacion_nombre = ubicacionNombre || 'Bodega IT';
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
         tipo_accion: 'RECEPCION',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Reingreso a inventario (Loc: ${ubicacionNombre}). Obs: ${observaciones}`
-    });
-
-    return eq;
+        detalle: `Devuelto por ${prevUser}`
+      });
+    }
   },
 
-  bajaEquipo: async (id: number, motivo: string) => {
+  bajaEquipo: async (id: number, motivo: string, archivo?: File) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      MOCK_EQUIPOS[idx].estado = EstadoEquipo.BAJA;
+      
+      let detalleHistorial = `Motivo: ${motivo}`;
+      if (archivo) {
+          detalleHistorial += ` | Evidencia: ${archivo.name}`;
+      }
 
-    eq.estado = EstadoEquipo.BAJA;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    eq.observaciones = motivo;
-
-    MOCK_HISTORIAL.push({
+      MOCK_HISTORIAL.push({
         id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
         tipo_accion: 'BAJA',
         fecha: new Date().toISOString().split('T')[0],
         usuario_responsable: 'Admin',
-        detalle: `Baja definitiva: ${motivo}`
-    });
-    return eq;
-  },
-
-  enviarAMantenimiento: async (id: number, motivo: string) => {
-    await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    // If assigned, close assignment or keep it? 
-    // Usually maintenance implies temporary removal. Let's keep assignment info but change status
-    // Or remove assignment. Let's assume removal for external repair.
-    
-    eq.estado = EstadoEquipo.EN_MANTENIMIENTO;
-    eq.observaciones = motivo;
-    
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'MANTENIMIENTO',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Enviado a mantenimiento: ${motivo}`
-    });
-    return eq;
-  },
-
-  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: 'DISPONIBLE' | 'BAJA') => {
-    await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === equipoId);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    eq.estado = nuevoEstado === 'DISPONIBLE' ? EstadoEquipo.DISPONIBLE : EstadoEquipo.BAJA;
-    
-    // If it becomes available, set new location
-    if (nuevoEstado === 'DISPONIBLE') {
-        eq.ubicacion_id = data.ubicacionId;
-        eq.ubicacion_nombre = data.ubicacionNombre;
-        eq.responsable_id = undefined;
-        eq.responsable_nombre = undefined;
+        detalle: detalleHistorial,
+        archivo: archivo ? archivo.name : undefined // Guardar referencia al archivo
+      });
     }
-
-    // Update Charger Serial if provided
-    if (data.serie_cargador) {
-      eq.serie_cargador = data.serie_cargador;
-    }
-
-    MOCK_MANTENIMIENTOS.push({
-        id: MOCK_MANTENIMIENTOS.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        equipo_modelo: eq.modelo,
-        fecha: new Date().toISOString().split('T')[0],
-        tipo_mantenimiento: data.tipo,
-        proveedor: data.proveedor,
-        costo: data.costo,
-        descripcion: data.descripcion
-    });
-
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'MANTENIMIENTO',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Fin mantenimiento (${nuevoEstado}). ${data.descripcion}`
-    });
-
-    return eq;
   },
 
   marcarParaBaja: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string) => {
     await simulateDelay();
-    const eq = MOCK_EQUIPOS.find(e => e.id === id);
-    if (!eq) throw new Error("Equipo no encontrado");
-
-    // If it was assigned, close assignment
-    const activeAssign = MOCK_ASIGNACIONES.find(a => a.equipo_codigo === eq.codigo_activo && a.fecha_fin === null);
-    if (activeAssign) {
-        activeAssign.fecha_fin = new Date().toISOString().split('T')[0];
-    }
-
-    eq.estado = EstadoEquipo.PARA_BAJA;
-    eq.responsable_id = undefined;
-    eq.responsable_nombre = undefined;
-    eq.ubicacion_id = ubicacionId;
-    eq.ubicacion_nombre = ubicacionNombre;
-    eq.observaciones = observaciones;
-
-    MOCK_HISTORIAL.push({
-        id: MOCK_HISTORIAL.length + 1,
-        equipo_id: eq.id,
-        equipo_codigo: eq.codigo_activo,
-        tipo_accion: 'PRE_BAJA',
-        fecha: new Date().toISOString().split('T')[0],
-        usuario_responsable: 'Admin',
-        detalle: `Enviado a Pre-Baja (Bodega: ${ubicacionNombre}). Obs: ${observaciones}`
-    });
-    
-    return eq;
-  },
-
-  // Upload file for assignment
-  subirArchivoAsignacion: async (id: number, file: File) => {
-    await simulateDelay();
-    const assignment = MOCK_ASIGNACIONES.find(a => a.id === id);
-    if (!assignment) throw new Error("Asignación no encontrada");
-    
-    // Simulate storing file name/path
-    assignment.archivo_pdf = file.name;
-    return assignment;
-  },
-
-  // Licenses
-  getTipoLicencias: async () => { await simulateDelay(); return [...MOCK_TIPOS_LICENCIA]; },
-  createTipoLicencia: async (data: any) => {
-     await simulateDelay();
-     const newItem = { ...data, id: MOCK_TIPOS_LICENCIA.length + 1 };
-     MOCK_TIPOS_LICENCIA.push(newItem);
-     return newItem;
-  },
-  getLicencias: async () => { await simulateDelay(); return [...MOCK_LICENCIAS]; },
-  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string) => {
-    await simulateDelay();
-    const tipo = MOCK_TIPOS_LICENCIA.find(t => t.id === tipoId);
-    if (!tipo) throw new Error("Tipo no encontrado");
-    for(let i=0; i<cantidad; i++) {
-        MOCK_LICENCIAS.push({
-            id: MOCK_LICENCIAS.length + 1 + i,
-            tipo_id: tipoId,
-            tipo_nombre: tipo.nombre,
-            clave: `KEY-${Math.floor(Math.random() * 10000)}`,
-            fecha_compra: new Date().toISOString().split('T')[0],
-            fecha_vencimiento: fechaVencimiento,
-            usuario_id: null
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+        MOCK_EQUIPOS[idx].estado = EstadoEquipo.PARA_BAJA;
+        MOCK_EQUIPOS[idx].observaciones = observaciones;
+        MOCK_EQUIPOS[idx].ubicacion_id = ubicacionId;
+        MOCK_EQUIPOS[idx].ubicacion_nombre = ubicacionNombre;
+        
+        MOCK_HISTORIAL.push({
+            id: MOCK_HISTORIAL.length + 1,
+            equipo_id: id,
+            equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+            tipo_accion: 'PRE_BAJA',
+            fecha: new Date().toISOString().split('T')[0],
+            usuario_responsable: 'Admin',
+            detalle: `Enviado a pre-baja: ${observaciones}`
         });
     }
   },
-  asignarLicencia: async (licenciaId: number, usuarioId: number) => {
+
+  enviarAMantenimiento: async (id: number, motivo: string) => {
     await simulateDelay();
-    const lic = MOCK_LICENCIAS.find(l => l.id === licenciaId);
-    const user = MOCK_USERS.find(u => u.id === usuarioId);
-    if (lic && user) {
-        lic.usuario_id = user.id;
-        lic.usuario_nombre = user.nombre_completo;
-        lic.usuario_departamento = user.departamento_nombre;
-        return lic;
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      MOCK_EQUIPOS[idx].estado = EstadoEquipo.EN_MANTENIMIENTO;
+      MOCK_EQUIPOS[idx].observaciones = motivo; // Actualizar razón para que se vea en el módulo de mantenimiento
+
+      MOCK_HISTORIAL.push({
+        id: MOCK_HISTORIAL.length + 1,
+        equipo_id: id,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        tipo_accion: 'MANTENIMIENTO',
+        fecha: new Date().toISOString().split('T')[0],
+        usuario_responsable: 'Admin',
+        detalle: `Enviado a taller: ${motivo}`
+      });
     }
-    throw new Error("Error al asignar");
-  },
-  liberarLicencia: async (licenciaId: number) => {
-    await simulateDelay();
-    const lic = MOCK_LICENCIAS.find(l => l.id === licenciaId);
-    if (lic) {
-        lic.usuario_id = undefined;
-        lic.usuario_nombre = undefined;
-        lic.usuario_departamento = undefined;
-        return lic;
-    }
-    throw new Error("Licencia no encontrada");
   },
 
-  // Stats
-  getStats: async () => {
+  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string, archivo?: File) => {
     await simulateDelay();
-    return {
-        total: MOCK_EQUIPOS.length,
-        assigned: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.ACTIVO).length,
-        available: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.DISPONIBLE).length,
-        maintenance: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.EN_MANTENIMIENTO).length,
-        retired: MOCK_EQUIPOS.filter(e => e.estado === EstadoEquipo.BAJA).length
-    };
+    const idx = MOCK_EQUIPOS.findIndex(e => e.id === equipoId);
+    if (idx >= 0) {
+      // 1. Crear registro de mantenimiento
+      MOCK_MANTENIMIENTOS.push({
+        id: MOCK_MANTENIMIENTOS.length + 1,
+        equipo_id: equipoId,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        equipo_modelo: MOCK_EQUIPOS[idx].modelo,
+        fecha: new Date().toISOString().split('T')[0],
+        tipo_mantenimiento: data.tipo,
+        proveedor: data.proveedor,
+        costo: data.costo,
+        descripcion: data.descripcion,
+        archivo_orden: archivo ? archivo.name : undefined // Mock storage
+      });
+
+      // 2. Actualizar equipo
+      MOCK_EQUIPOS[idx].estado = nuevoEstado as EstadoEquipo;
+      MOCK_EQUIPOS[idx].ultimo_mantenimiento = new Date().toISOString().split('T')[0];
+      // IMPORTANT: Limpiar observaciones para que el equipo quede "limpio" tras el mantenimiento
+      MOCK_EQUIPOS[idx].observaciones = ''; 
+      
+      if (data.ubicacionId) {
+          MOCK_EQUIPOS[idx].ubicacion_id = data.ubicacionId;
+          MOCK_EQUIPOS[idx].ubicacion_nombre = data.ubicacionNombre;
+      }
+      if (data.serie_cargador) {
+        MOCK_EQUIPOS[idx].serie_cargador = data.serie_cargador;
+      }
+
+      // 3. Log Historial
+      MOCK_HISTORIAL.push({
+        id: MOCK_HISTORIAL.length + 1,
+        equipo_id: equipoId,
+        equipo_codigo: MOCK_EQUIPOS[idx].codigo_activo,
+        tipo_accion: 'MANTENIMIENTO',
+        fecha: new Date().toISOString().split('T')[0],
+        usuario_responsable: 'Admin',
+        detalle: `Mantenimiento finalizado (${data.tipo})`
+      });
+
+      // 4. (Integration) Check if this equipment was in a Maintenance Plan and update task status
+      MOCK_DETALLES_PLAN.forEach(task => {
+        if (task.equipo_id === equipoId && task.estado === EstadoPlan.EN_PROCESO) {
+            task.estado = EstadoPlan.REALIZADO;
+            task.fecha_ejecucion = new Date().toISOString().split('T')[0];
+            task.tecnico_responsable = data.proveedor;
+        }
+      });
+      
+      // EMAIL TRIGGER
+      // Determine target user (only if returning to ACTIVE state and has a responsible user)
+      const targetUserId = (nuevoEstado === EstadoEquipo.ACTIVO) ? MOCK_EQUIPOS[idx].responsable_id : undefined;
+      
+      // Get attachment name
+      const attachmentName = archivo ? archivo.name : undefined;
+
+      const equipStr = `${MOCK_EQUIPOS[idx].tipo_nombre} ${MOCK_EQUIPOS[idx].marca} ${MOCK_EQUIPOS[idx].modelo}`;
+
+      await sendNotificationEmail(
+        targetUserId,
+        'Reporte de Mantenimiento Finalizado',
+        `El proceso de mantenimiento para el equipo ${equipStr} (Código: ${MOCK_EQUIPOS[idx].codigo_activo}) ha concluido.
+        \n\nDetalles del Servicio:
+        \n- Tipo: ${data.tipo}
+        \n- Proveedor: ${data.proveedor}
+        \n- Descripción: ${data.descripcion}
+        \n\nSe adjunta el informe técnico/orden de servicio.`,
+        'mantenimiento',
+        attachmentName
+      );
+    }
   },
-  getWarrantyReport: async () => {
+
+  iniciarMantenimientoDesdePlan: async (planDetailId: number, motivo: string) => {
     await simulateDelay();
-    // Mock logic for warranties expiring
-    return MOCK_EQUIPOS
-        .filter(e => e.estado === EstadoEquipo.ACTIVO)
-        .slice(0, 5)
-        .map(e => ({ equipo: e, dias_restantes: Math.floor(Math.random() * 90) + 1, fecha_vencimiento: '2025-01-01' }));
+    // 1. Update Plan Detail
+    const detail = MOCK_DETALLES_PLAN.find(d => d.id === planDetailId);
+    if (detail) {
+        detail.estado = EstadoPlan.EN_PROCESO;
+        
+        // 2. Update Equipment Status
+        const eqIdx = MOCK_EQUIPOS.findIndex(e => e.id === detail.equipo_id);
+        if (eqIdx >= 0) {
+            MOCK_EQUIPOS[eqIdx].estado = EstadoEquipo.EN_MANTENIMIENTO;
+            MOCK_EQUIPOS[eqIdx].observaciones = motivo; // Actualizar razón para que se vea en el módulo de mantenimiento
+            
+            // 3. Add History
+            MOCK_HISTORIAL.push({
+                id: MOCK_HISTORIAL.length + 1,
+                equipo_id: detail.equipo_id,
+                equipo_codigo: MOCK_EQUIPOS[eqIdx].codigo_activo,
+                tipo_accion: 'MANTENIMIENTO',
+                fecha: new Date().toISOString().split('T')[0],
+                usuario_responsable: 'Admin',
+                detalle: `Iniciado desde Planificación: ${motivo}`
+            });
+        }
+    }
   },
-  getReplacementCandidates: async () => {
+
+  subirArchivoAsignacion: async (id: number, file: File) => {
+      // Mock upload
       await simulateDelay();
-      const currentYear = new Date().getFullYear();
-      return MOCK_EQUIPOS.filter(e => (currentYear - new Date(e.fecha_compra).getFullYear()) >= 4);
+      const idx = MOCK_ASIGNACIONES.findIndex(a => a.id === id);
+      if (idx >= 0) {
+          MOCK_ASIGNACIONES[idx].archivo_pdf = file.name;
+          return MOCK_ASIGNACIONES[idx];
+      }
+      throw new Error("Asignación no encontrada");
   },
-  getHistorial: async (tipoId?: number) => {
+
+  // --- Licenses ---
+  getTipoLicencias: async () => { await simulateDelay(); return [...MOCK_TIPOS_LICENCIA]; },
+  createTipoLicencia: async (data: any) => {
+    await simulateDelay();
+    const newId = MOCK_TIPOS_LICENCIA.length + 1;
+    const newItem = { ...data, id: newId };
+    MOCK_TIPOS_LICENCIA.push(newItem);
+    return newItem;
+  },
+  updateTipoLicencia: async (id: number, data: any) => {
+    await simulateDelay();
+    const idx = MOCK_TIPOS_LICENCIA.findIndex(t => t.id === id);
+    if (idx >= 0) {
+        MOCK_TIPOS_LICENCIA[idx] = { ...MOCK_TIPOS_LICENCIA[idx], ...data };
+        return MOCK_TIPOS_LICENCIA[idx];
+    }
+  },
+  deleteTipoLicencia: async (id: number) => {
       await simulateDelay();
-      let res = [...MOCK_HISTORIAL].sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-      if (tipoId) {
-          // Filter based on equipment type (need to join with Equipos)
-          // For mock, simplified:
-          res = res.filter(h => {
-              const eq = MOCK_EQUIPOS.find(e => e.id === h.equipo_id);
-              return eq && eq.tipo_equipo_id === tipoId;
+      const idx = MOCK_TIPOS_LICENCIA.findIndex(t => t.id === id);
+      if (idx >= 0) MOCK_TIPOS_LICENCIA.splice(idx, 1);
+  },
+  
+  getLicencias: async () => { await simulateDelay(); return [...MOCK_LICENCIAS]; },
+  agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento: string) => {
+      await simulateDelay();
+      const tipo = MOCK_TIPOS_LICENCIA.find(t => t.id === Number(tipoId));
+      if (!tipo) throw new Error("Tipo no encontrado");
+
+      for(let i=0; i<cantidad; i++) {
+          const newId = MOCK_LICENCIAS.length + 1 + i;
+          MOCK_LICENCIAS.push({
+              id: newId,
+              tipo_id: tipo.id,
+              tipo_nombre: tipo.nombre,
+              clave: `${tipo.nombre.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*1000)}-${new Date().getFullYear()}`,
+              fecha_compra: new Date().toISOString().split('T')[0],
+              fecha_vencimiento: fechaVencimiento,
+              usuario_id: null,
+              usuario_nombre: undefined
           });
       }
-      return res;
+      return true;
   },
-  getHistorialAsignaciones: async () => {
+  asignarLicencia: async (licenciaId: number, usuarioId: number) => {
       await simulateDelay();
-      return [...MOCK_ASIGNACIONES].sort((a,b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime());
+      const licIdx = MOCK_LICENCIAS.findIndex(l => l.id === licenciaId);
+      const user = MOCK_USERS.find(u => u.id === Number(usuarioId));
+      
+      if (licIdx >= 0 && user) {
+          MOCK_LICENCIAS[licIdx].usuario_id = user.id;
+          MOCK_LICENCIAS[licIdx].usuario_nombre = user.nombre_completo;
+          MOCK_LICENCIAS[licIdx].usuario_departamento = user.departamento_nombre;
+          return MOCK_LICENCIAS[licIdx];
+      }
+      throw new Error("Error al asignar licencia");
   },
-  getHistorialMantenimiento: async (tipoId?: number) => {
+  liberarLicencia: async (licenciaId: number) => {
       await simulateDelay();
-      let res = [...MOCK_MANTENIMIENTOS];
-       if (tipoId) {
-           res = res.filter(m => {
-              const eq = MOCK_EQUIPOS.find(e => e.id === m.equipo_id);
-              return eq && eq.tipo_equipo_id === tipoId;
-          });
-       }
-      return res;
+      const licIdx = MOCK_LICENCIAS.findIndex(l => l.id === licenciaId);
+      if (licIdx >= 0) {
+          MOCK_LICENCIAS[licIdx].usuario_id = null;
+          MOCK_LICENCIAS[licIdx].usuario_nombre = undefined;
+          MOCK_LICENCIAS[licIdx].usuario_departamento = undefined;
+          return MOCK_LICENCIAS[licIdx];
+      }
+      throw new Error("Licencia no encontrada");
   },
-  getNotifications: async () => {
+
+  // --- Maintenance Planning ---
+  getMaintenancePlans: async () => {
+    await simulateDelay();
+    return [...MOCK_PLANES];
+  },
+
+  getPlanDetails: async (planId: number) => {
       await simulateDelay();
-      return [...MOCK_NOTIFICACIONES];
+      const plan = MOCK_PLANES.find(p => p.id === planId);
+      if (!plan) throw new Error("Plan no encontrado");
+      const details = MOCK_DETALLES_PLAN.filter(d => d.plan_id === planId);
+      return { plan, details };
+  },
+
+  getPendingMaintenanceCurrentMonth: async () => {
+    await simulateDelay();
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentYear = today.getFullYear();
+    
+    // Get Active Plans for this year
+    const activePlanIds = MOCK_PLANES
+        .filter(p => p.anio === currentYear && p.estado === 'ACTIVO')
+        .map(p => p.id);
+        
+    // Filter pending/in-process details for this month
+    return MOCK_DETALLES_PLAN.filter(d => 
+        activePlanIds.includes(d.plan_id) && 
+        d.mes_programado === currentMonth &&
+        d.estado !== EstadoPlan.REALIZADO
+    );
+  },
+
+  createMaintenancePlan: async (plan: PlanMantenimiento, details: DetallePlan[]) => {
+      await simulateDelay();
+      MOCK_PLANES.push(plan);
+      MOCK_DETALLES_PLAN.push(...details);
+      return plan;
+  },
+
+  updatePlanDetailMonth: async (detailId: number, newMonth: number) => {
+      await simulateDelay();
+      const idx = MOCK_DETALLES_PLAN.findIndex(d => d.id === detailId);
+      if (idx >= 0) {
+          MOCK_DETALLES_PLAN[idx].mes_programado = newMonth;
+          return MOCK_DETALLES_PLAN[idx];
+      }
+  },
+  
+  registerMaintenanceExecution: async (detailId: number, data: { fecha: string, tecnico: string, observaciones: string, archivo?: File }) => {
+      await simulateDelay();
+      const idx = MOCK_DETALLES_PLAN.findIndex(d => d.id === detailId);
+      if (idx >= 0) {
+          MOCK_DETALLES_PLAN[idx].estado = EstadoPlan.REALIZADO;
+          MOCK_DETALLES_PLAN[idx].fecha_ejecucion = data.fecha;
+          MOCK_DETALLES_PLAN[idx].tecnico_responsable = data.tecnico;
+          
+          if (data.archivo) {
+              MOCK_EVIDENCIAS.push({
+                  id: MOCK_EVIDENCIAS.length + 1,
+                  detalle_plan_id: detailId,
+                  plan_id: MOCK_DETALLES_PLAN[idx].plan_id,
+                  equipo_id: MOCK_DETALLES_PLAN[idx].equipo_id,
+                  fecha_subida: new Date().toISOString(),
+                  archivo_url: URL.createObjectURL(data.archivo), // Mock URL
+                  tipo_archivo: data.archivo.type.includes('pdf') ? 'pdf' : 'imagen',
+                  observaciones: data.observaciones
+              });
+          }
+      }
+  },
+
+  getEvidence: async (detailId: number) => {
+      await simulateDelay();
+      return MOCK_EVIDENCIAS.find(e => e.detalle_plan_id === detailId);
+  },
+
+  // --- Stats & Reports ---
+  getStats: async () => {
+    // This is handled by useDashboardData mostly, but if we need a raw call:
+    return {}; 
+  },
+  getWarrantyReport: async () => {
+    // Filter active equipment
+    const activeEq = MOCK_EQUIPOS.filter(e => e.estado !== EstadoEquipo.BAJA);
+    const report: ReporteGarantia[] = [];
+    
+    activeEq.forEach(eq => {
+        const purchaseDate = new Date(eq.fecha_compra);
+        const warrantyEnd = new Date(purchaseDate);
+        warrantyEnd.setFullYear(purchaseDate.getFullYear() + eq.anos_garantia);
+        
+        const today = new Date();
+        const diffTime = warrantyEnd.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 90) { // Next 3 months or expired
+            report.push({
+                equipo: eq,
+                dias_restantes: diffDays,
+                fecha_vencimiento: warrantyEnd.toISOString().split('T')[0]
+            });
+        }
+    });
+    return report;
+  },
+  getReplacementCandidates: async () => {
+    // Logic: Equipment older than 4 years
+    const activeEq = MOCK_EQUIPOS.filter(e => e.estado !== EstadoEquipo.BAJA);
+    const today = new Date();
+    return activeEq.filter(eq => {
+        const purchaseDate = new Date(eq.fecha_compra);
+        const ageYears = (today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+        return ageYears >= 4;
+    });
+  },
+  getHistorial: async (tipoId?: number) => {
+    await simulateDelay();
+    if (tipoId) {
+        // Filter history by equipment that matches the type
+        const eqsOfType = MOCK_EQUIPOS.filter(e => e.tipo_equipo_id === tipoId).map(e => e.id);
+        return MOCK_HISTORIAL.filter(h => eqsOfType.includes(h.equipo_id)).sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    }
+    return MOCK_HISTORIAL.sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  },
+  getHistorialAsignaciones: async () => { await simulateDelay(); return [...MOCK_ASIGNACIONES]; },
+  getHistorialMantenimiento: async (tipoId?: number) => { 
+      await simulateDelay(); 
+      if (tipoId) {
+         const eqsOfType = MOCK_EQUIPOS.filter(e => e.tipo_equipo_id === tipoId).map(e => e.id);
+         return MOCK_MANTENIMIENTOS.filter(m => eqsOfType.includes(m.equipo_id)).sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      }
+      return [...MOCK_MANTENIMIENTOS].sort((a,b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()); 
+  },
+  getNotifications: async () => { await simulateDelay(); return [...MOCK_NOTIFICACIONES]; },
+  
+  // --- Email Settings ---
+  getEmailConfig: async () => {
+    await simulateDelay();
+    return { ...MOCK_EMAIL_CONFIG };
+  },
+  saveEmailConfig: async (config: EmailConfig) => {
+      await simulateDelay();
+      MOCK_EMAIL_CONFIG = { ...config };
+      return MOCK_EMAIL_CONFIG;
+  },
+
+  // --- Automatic Alerts ---
+  verificarAlertasMantenimiento: async () => {
+    await simulateDelay();
+    const config = MOCK_EMAIL_CONFIG;
+    const diasAnticipacion = config.dias_anticipacion_alerta || 15;
+    
+    const today = new Date();
+    // Logic to determine next month
+    const currentMonth = today.getMonth(); // 0-11
+    const currentYear = today.getFullYear();
+    
+    // Determine the "Next Scheduling Month"
+    let nextMonthIndex = currentMonth + 1; // 1-12 (Jan is 0 in JS date, but plans use 1-12)
+    let yearOfPlan = currentYear;
+    
+    if (nextMonthIndex > 11) {
+        nextMonthIndex = 0;
+        yearOfPlan++;
+    }
+    
+    // Target: 1st of next month
+    const startOfNextMonth = new Date(yearOfPlan, nextMonthIndex, 1);
+    
+    // Threshold date: startOfNextMonth - diasAnticipacion
+    const thresholdDate = new Date(startOfNextMonth);
+    thresholdDate.setDate(startOfNextMonth.getDate() - diasAnticipacion);
+    
+    // Check if we are past the threshold
+    if (today >= thresholdDate) {
+        const alertKey = `maintenance_alert_sent_${yearOfPlan}_${nextMonthIndex + 1}`; // 1-12
+        const alreadySent = localStorage.getItem(alertKey);
+        
+        if (!alreadySent) {
+            // Logic to find users and send emails
+            
+            // 1. Find Active Plans for that year
+            const activePlans = MOCK_PLANES.filter(p => p.anio === yearOfPlan && p.estado === 'ACTIVO');
+            const planIds = activePlans.map(p => p.id);
+            
+            if (planIds.length === 0) return; // No plans
+            
+            // 2. Find details for next month (nextMonthIndex + 1 because plan uses 1-based months)
+            const targetMonth = nextMonthIndex + 1;
+            const tasks = MOCK_DETALLES_PLAN.filter(d => 
+                planIds.includes(d.plan_id) && 
+                d.mes_programado === targetMonth && 
+                d.estado === EstadoPlan.PENDIENTE
+            );
+            
+            if (tasks.length === 0) return;
+            
+            // 3. Get Equipos to find owners
+            const equipIds = tasks.map(t => t.equipo_id);
+            const equipos = MOCK_EQUIPOS.filter(e => equipIds.includes(e.id) && e.responsable_id);
+            
+            // 4. Group by User
+            const userTasks: Record<number, string[]> = {}; // userId -> [equipo codes]
+            
+            equipos.forEach(eq => {
+                if (eq.responsable_id) {
+                    if (!userTasks[eq.responsable_id]) userTasks[eq.responsable_id] = [];
+                    userTasks[eq.responsable_id].push(`${eq.marca} ${eq.modelo} (${eq.codigo_activo})`);
+                }
+            });
+            
+            // 5. Send Emails
+            let emailsSentCount = 0;
+            for (const [userId, eqList] of Object.entries(userTasks)) {
+                await sendNotificationEmail(
+                    Number(userId),
+                    `Recordatorio: Mantenimiento Programado para ${MONTH_NAMES[targetMonth-1]}`,
+                    `Estimado usuario,\n\nSe le informa que los siguientes equipos bajo su responsabilidad tienen un mantenimiento programado para el próximo mes:\n\n${eqList.map(s => `- ${s}`).join('\n')}\n\nPor favor estar atento a las indicaciones del departamento técnico.`,
+                    'mantenimiento' 
+                );
+                emailsSentCount++;
+            }
+            
+            if (emailsSentCount > 0) {
+                // 6. Add System Notification
+                MOCK_NOTIFICACIONES.unshift({
+                    id: Date.now(),
+                    titulo: 'Alertas de Mantenimiento Enviadas',
+                    mensaje: `Se han enviado ${emailsSentCount} correos de recordatorio para el mantenimiento de ${MONTH_NAMES[targetMonth-1]} ${yearOfPlan}.`,
+                    fecha: new Date().toISOString().split('T')[0],
+                    leido: false,
+                    tipo: 'info'
+                });
+                
+                // Mark as sent
+                localStorage.setItem(alertKey, 'true');
+            }
+        }
+    }
   }
 };
-
-// Check if we should use the live API
-if (USE_LIVE_API) {
-    Object.assign(api, liveApi);
-}

@@ -10,6 +10,9 @@ Debes crear los modelos correspondientes a las tablas con sus relaciones (`belon
 *   **User**: `hasOne(Departamento)`, `hasOne(Puesto)`, `hasMany(Equipo)` (como responsable).
 *   **Equipo**: `belongsTo(TipoEquipo)`, `belongsTo(User)`, `hasMany(Mantenimiento)`, `hasMany(HistorialMovimiento)`.
 *   **Licencia**: `belongsTo(TipoLicencia)`, `belongsTo(User)`.
+*   **PlanMantenimiento**: `hasMany(DetallePlan)`.
+*   **DetallePlan**: `belongsTo(PlanMantenimiento)`, `belongsTo(Equipo)`, `hasOne(EvidenciaMantenimiento)`.
+*   **EvidenciaMantenimiento**: `belongsTo(DetallePlan)`.
 
 ## 2. Rutas API (routes/api.php)
 
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EquipoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\PlanMantenimientoController;
 // ... importa tus controladores
 
 // Auth
@@ -54,6 +58,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/licencias/stock', [LicenciaController::class, 'addStock']);
     Route::post('/licencias/{id}/asignar', [LicenciaController::class, 'asignar']);
     Route::post('/licencias/{id}/liberar', [LicenciaController::class, 'liberar']);
+
+    // Planificación Mantenimiento (NUEVO)
+    Route::get('/planes', [PlanMantenimientoController::class, 'index']);
+    Route::get('/planes/{id}', [PlanMantenimientoController::class, 'show']); // Debe incluir relaciones 'detalles' y 'detalles.evidencia'
+    Route::post('/planes', [PlanMantenimientoController::class, 'store']);
+    Route::put('/planes/detalles/{id}', [PlanMantenimientoController::class, 'updateDetail']); // Para mover de mes (DnD)
+    
+    // Ejecución y Evidencia (NUEVO)
+    Route::post('/planes/ejecucion', [PlanMantenimientoController::class, 'registerExecution']); // Recibe FormData con archivo
     
     // Reportes y Stats
     Route::get('/stats/dashboard', [ReportController::class, 'dashboardStats']);
@@ -68,21 +81,28 @@ Route::middleware('auth:sanctum')->group(function () {
 
 ## 3. Notas de Implementación de Controladores
 
-Cuando implementes los controladores, asegúrate de devolver JSON en el formato que espera el Frontend (ver `types.ts` y `services/liveApi.ts`).
+### PlanMantenimientoController
 
-Ejemplo de respuesta de Equipo con relaciones:
+Cuando guardes la ejecución (`registerExecution`), el frontend enviará un objeto `FormData`.
+En Laravel:
 
 ```php
-// EquipoController.php
-public function index() {
-    return Equipo::with(['tipo_equipo', 'ubicacion', 'responsable', 'responsable.departamento'])->get()->map(function($e) {
-        return [
-            'id' => $e->id,
-            'codigo_activo' => $e->codigo_activo,
-            // ... mapear campos
-            'tipo_nombre' => $e->tipo_equipo->nombre,
-            'responsable_nombre' => $e->responsable ? $e->responsable->nombre_completo : null,
-        ];
-    });
+public function registerExecution(Request $request) {
+    $detail = DetallePlan::find($request->detail_id);
+    $detail->estado = 'Realizado';
+    $detail->fecha_ejecucion = $request->fecha;
+    $detail->tecnico_responsable = $request->tecnico;
+    $detail->save();
+
+    if ($request->hasFile('archivo')) {
+        $path = $request->file('archivo')->store('evidencias', 'public');
+        
+        EvidenciaMantenimiento::create([
+            'detalle_plan_id' => $detail->id,
+            'archivo_url' => asset('storage/' . $path),
+            'observaciones' => $request->observaciones,
+            // ... otros campos
+        ]);
+    }
 }
 ```

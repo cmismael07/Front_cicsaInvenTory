@@ -32,6 +32,7 @@ export const useMaintenanceManager = () => {
   // Modal State
   const [selectedEquipo, setSelectedEquipo] = useState<Equipo | null>(null);
   const [formData, setFormData] = useState<MaintenanceFormData>(INITIAL_FORM_STATE);
+  const [reportFile, setReportFile] = useState<File | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -59,29 +60,61 @@ export const useMaintenanceManager = () => {
     setSelectedEquipo(equipo);
     setFormData({
       ...INITIAL_FORM_STATE,
-      ubicacion_id: bodegas.length > 0 ? bodegas[0].id : '',
+      // Si el equipo NO tiene responsable, intentamos pre-seleccionar su ubicación actual (si es bodega) o la primera bodega.
+      // Si TIENE responsable, dejamos vacío (la UI lo ocultará).
+      ubicacion_id: (!equipo.responsable_id) 
+         ? (equipo.ubicacion_id || (bodegas.length > 0 ? bodegas[0].id : '')) 
+         : '',
       serie_cargador: equipo.serie_cargador || ''
     });
+    setReportFile(null);
   };
 
   const closeModal = () => {
     setSelectedEquipo(null);
     setFormData(INITIAL_FORM_STATE);
+    setReportFile(null);
   };
 
   const updateForm = (updates: Partial<MaintenanceFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
+  const setFile = (file: File | null) => {
+    setReportFile(file);
+  };
+
   const submitMaintenance = async () => {
     if (!selectedEquipo) return;
+    if (!reportFile) {
+        Swal.fire('Atención', 'Debe subir la Orden de Servicio firmada antes de finalizar.', 'warning');
+        return;
+    }
 
     try {
-      // Find location name if ID is selected
-      let ubicacionNombre = '';
-      if (formData.ubicacion_id) {
-        const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
-        if (bodega) ubicacionNombre = bodega.nombre;
+      // Determine final status and location
+      let nuevoEstado = EstadoEquipo.DISPONIBLE;
+      let ubicacionIdToSend = Number(formData.ubicacion_id) || undefined;
+      let ubicacionNombreToSend = '';
+
+      if (formData.accion_final === 'BAJA') {
+        nuevoEstado = EstadoEquipo.BAJA;
+      } else {
+        // Opción: Equipo Operativo (DISPONIBLE en el form visualmente)
+        // Logica: Si tenía responsable, vuelve a Activo (Usuario). Si no, vuelve a Disponible (Bodega).
+        if (selectedEquipo.responsable_id) {
+           nuevoEstado = EstadoEquipo.ACTIVO;
+           // Al volver a Activo, ignoramos la ubicación del formulario y enviamos undefined
+           // para que el backend/mock mantenga la ubicación y responsable previos.
+           ubicacionIdToSend = undefined; 
+        } else {
+           nuevoEstado = EstadoEquipo.DISPONIBLE;
+           // Si va a bodega, buscamos el nombre de la ubicación seleccionada
+           if (formData.ubicacion_id) {
+             const bodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+             if (bodega) ubicacionNombreToSend = bodega.nombre;
+           }
+        }
       }
 
       await api.finalizarMantenimiento(
@@ -91,19 +124,32 @@ export const useMaintenanceManager = () => {
           proveedor: formData.proveedor,
           costo: formData.costo,
           descripcion: formData.descripcion,
-          ubicacionId: Number(formData.ubicacion_id) || undefined,
-          ubicacionNombre: ubicacionNombre || undefined,
+          ubicacionId: ubicacionIdToSend,
+          ubicacionNombre: ubicacionNombreToSend || undefined,
           serie_cargador: formData.serie_cargador
         },
-        formData.accion_final
+        nuevoEstado,
+        reportFile
       );
       
+      // Preparar mensaje de éxito personalizado
+      const emailConfig = await api.getEmailConfig();
+      let successMessage = 'Mantenimiento registrado correctamente.';
+
+      if (emailConfig.notificar_mantenimiento) {
+          if (nuevoEstado === EstadoEquipo.ACTIVO && selectedEquipo.responsable_nombre) {
+              successMessage += ` Se ha enviado un correo con el detalle al usuario: ${selectedEquipo.responsable_nombre}.`;
+          } else if (emailConfig.correos_copia.length > 0) {
+              successMessage += ` Se ha notificado por correo a las cuentas configuradas (Soporte/Administración).`;
+          }
+      }
+
       closeModal();
       await loadData();
       
       Swal.fire({
-        title: 'Registrado',
-        text: 'Mantenimiento registrado correctamente.',
+        title: 'Mantenimiento Finalizado',
+        text: successMessage,
         icon: 'success',
         confirmButtonColor: '#2563eb'
       });
@@ -123,10 +169,12 @@ export const useMaintenanceManager = () => {
     loading,
     selectedEquipo,
     formData,
+    reportFile,
     actions: {
       openModal,
       closeModal,
       updateForm,
+      setFile,
       submitMaintenance,
       refresh: loadData
     }

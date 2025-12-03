@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { TipoEquipo } from '../../types';
 import { Edit, Trash2 } from 'lucide-react';
@@ -22,6 +23,7 @@ export const EquipmentTypesTable: React.FC<EquipmentTypesTableProps> = ({ tipos,
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>
+              <th className="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Freq. Anual</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
@@ -31,6 +33,9 @@ export const EquipmentTypesTable: React.FC<EquipmentTypesTableProps> = ({ tipos,
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">#{tipo.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{tipo.nombre}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{tipo.descripcion}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-blue-600">
+                   {tipo.frecuencia_anual ?? 1}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button 
                     onClick={() => onEdit(tipo)}
@@ -49,7 +54,7 @@ export const EquipmentTypesTable: React.FC<EquipmentTypesTableProps> = ({ tipos,
             ))}
              {tipos.length === 0 && (
                 <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500">No hay tipos de equipo registrados.</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay tipos de equipo registrados.</td>
                 </tr>
             )}
           </tbody>

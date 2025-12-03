@@ -1,10 +1,13 @@
 
+
 import { api } from './mockApi';
 import { Equipo, Usuario } from '../types';
 
 export const reportService = {
   getAssignments: async () => api.getHistorialAsignaciones(),
   
+  uploadAssignmentFile: async (id: number, file: File) => api.subirArchivoAsignacion(id, file),
+
   getMovements: async (tipoId?: number) => api.getHistorial(tipoId),
   
   getMaintenance: async (tipoId?: number) => api.getHistorialMantenimiento(tipoId),

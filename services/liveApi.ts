@@ -1,5 +1,5 @@
 
-import { Equipo, Usuario, Departamento, Puesto, TipoEquipo, HistorialMovimiento, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, ReporteGarantia, Notificacion } from '../types';
+import { Equipo, Usuario, Departamento, Puesto, TipoEquipo, HistorialMovimiento, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, ReporteGarantia, Notificacion, Ciudad } from '../types';
 
 // URL base de tu API Laravel (ajusta el puerto si es necesario)
 //const API_URL = 'http://localhost:8000/api';
@@ -89,6 +89,26 @@ export const liveApi = {
   },
   deletePuesto: async (id: number): Promise<void> => {
     await fetch(`${API_URL}/puestos/${id}`, { method: 'DELETE', headers: getHeaders() });
+  },
+
+  getCiudades: async (): Promise<Ciudad[]> => {
+    const response = await fetch(`${API_URL}/ciudades`, { headers: getHeaders() });
+    return handleResponse(response);
+  },
+  createCiudad: async (nombre: string): Promise<Ciudad> => {
+    const response = await fetch(`${API_URL}/ciudades`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre })
+    });
+    return handleResponse(response);
+  },
+  updateCiudad: async (id: number, nombre: string): Promise<Ciudad> => {
+    const response = await fetch(`${API_URL}/ciudades/${id}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nombre })
+    });
+    return handleResponse(response);
+  },
+  deleteCiudad: async (id: number): Promise<void> => {
+    await fetch(`${API_URL}/ciudades/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   // --- Users ---
@@ -281,7 +301,4 @@ agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento
     const response = await fetch(`${API_URL}/notificaciones`, { headers: getHeaders() });
     return handleResponse(response);
   }
-
-
-  
 };

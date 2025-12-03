@@ -1,4 +1,5 @@
 
+
 export enum RolUsuario {
   ADMIN = 'Administrador',
   TECNICO = 'Técnico',
@@ -13,10 +14,27 @@ export enum EstadoEquipo {
   PARA_BAJA = 'Para Baja'
 }
 
+export enum FrecuenciaMantenimiento {
+  MENSUAL = 'Mensual',
+  BIMESTRAL = 'Bimestral',
+  TRIMESTRAL = 'Trimestral',
+  SEMESTRAL = 'Semestral',
+  ANUAL = 'Anual'
+}
+
+export enum EstadoPlan {
+  PENDIENTE = 'Pendiente',
+  EN_PROCESO = 'En Proceso',
+  REALIZADO = 'Realizado',
+  RETRASADO = 'Retrasado'
+}
+
 export interface Departamento {
   id: number;
   nombre: string;
-  es_bodega?: boolean; // Indica si el departamento funciona como almacén de IT
+  es_bodega?: boolean; 
+  ciudad_id?: number; 
+  ciudad_nombre?: string;
 }
 
 export interface Puesto {
@@ -24,15 +42,20 @@ export interface Puesto {
   nombre: string;
 }
 
+export interface Ciudad {
+  id: number;
+  nombre: string;
+}
+
 export interface Usuario {
   id: number;
   nombre_usuario: string;
-  numero_empleado?: string; // Nuevo campo
+  numero_empleado?: string; 
   nombres: string;
   apellidos: string;
-  nombre_completo: string; // Computed or combined
+  nombre_completo: string; 
   correo: string;
-  password?: string; // Added for authentication
+  password?: string; 
   rol: RolUsuario;
   departamento_id?: number;
   departamento_nombre?: string;
@@ -43,13 +66,14 @@ export interface Usuario {
 
 export interface TipoEquipo {
   id: number;
-  nombre: string; // Laptop, Monitor, etc.
+  nombre: string; 
   descripcion: string;
+  frecuencia_anual?: number; // Cantidad de mantenimientos al año (0 = excluido)
 }
 
 export interface Ubicacion {
   id: number;
-  nombre: string; // Bodega 1, Piso 2, etc.
+  nombre: string; 
 }
 
 export interface Equipo {
@@ -60,8 +84,8 @@ export interface Equipo {
   marca: string;
   tipo_equipo_id: number;
   tipo_nombre?: string;
-  serie_cargador?: string; // Nuevo campo para Laptops
-  fecha_compra: string; // ISO Date
+  serie_cargador?: string; 
+  fecha_compra: string; 
   valor_compra: number;
   anos_garantia: number;
   estado: EstadoEquipo;
@@ -70,6 +94,8 @@ export interface Equipo {
   responsable_id?: number;
   responsable_nombre?: string;
   observaciones: string;
+  frecuencia_mantenimiento?: FrecuenciaMantenimiento; // Legacy field, now preferred to use Type frequency
+  ultimo_mantenimiento?: string; // New field
 }
 
 export interface HistorialMovimiento {
@@ -78,8 +104,9 @@ export interface HistorialMovimiento {
   equipo_codigo: string;
   tipo_accion: 'CREACION' | 'EDICION' | 'ASIGNACION' | 'RECEPCION' | 'BAJA' | 'MANTENIMIENTO' | 'PRE_BAJA';
   fecha: string;
-  usuario_responsable: string; // Who performed the action
+  usuario_responsable: string; 
   detalle: string;
+  archivo?: string; // Nombre del archivo de evidencia
 }
 
 export interface HistorialAsignacion {
@@ -89,9 +116,9 @@ export interface HistorialAsignacion {
   usuario_nombre: string;
   usuario_departamento: string;
   fecha_inicio: string;
-  fecha_fin: string | null; // null indica asignación actual (vigente)
+  fecha_fin: string | null; 
   ubicacion: string;
-  archivo_pdf?: string; // URL o nombre del archivo cargado
+  archivo_pdf?: string; 
 }
 
 export interface ReporteGarantia {
@@ -119,13 +146,13 @@ export interface RegistroMantenimiento {
   proveedor: string;
   costo: number;
   descripcion: string;
+  archivo_orden?: string; // URL or name of the signed PDF
 }
 
 // --- New License Interfaces ---
-
 export interface TipoLicencia {
   id: number;
-  nombre: string; // e.g., "Office 365 Business", "Adobe CC"
+  nombre: string; 
   proveedor: string;
   descripcion: string;
 }
@@ -134,10 +161,59 @@ export interface Licencia {
   id: number;
   tipo_id: number;
   tipo_nombre: string;
-  clave: string; // License Key or Seat Identifier
+  clave: string; 
   fecha_compra: string;
   fecha_vencimiento: string;
-  usuario_id?: number | null; // Null if available
+  usuario_id?: number | null; 
   usuario_nombre?: string;
-  usuario_departamento?: string; // Cached for reporting
+  usuario_departamento?: string; 
+}
+
+// --- New Planning Interfaces ---
+
+export interface PlanMantenimiento {
+  id: number;
+  anio: number;
+  nombre: string;
+  creado_por: string;
+  fecha_creacion: string;
+  estado: 'ACTIVO' | 'CERRADO';
+  ciudad_id?: number;     // Optional to support legacy plans or global plans
+  ciudad_nombre?: string;
+}
+
+export interface DetallePlan {
+  id: number; // Unique ID for the schedule item
+  plan_id: number;
+  equipo_id: number;
+  equipo_codigo: string;
+  equipo_tipo: string;
+  equipo_modelo: string;
+  equipo_ubicacion: string;
+  mes_programado: number; // 1-12
+  estado: EstadoPlan;
+  fecha_ejecucion?: string;
+  tecnico_responsable?: string;
+}
+
+export interface EvidenciaMantenimiento {
+  id: number;
+  detalle_plan_id: number;
+  plan_id: number;
+  equipo_id: number;
+  fecha_subida: string;
+  archivo_url: string;
+  tipo_archivo: 'imagen' | 'pdf';
+  observaciones: string;
+}
+
+// --- Email Config Interface ---
+export interface EmailConfig {
+  remitente: string; // Nombre a mostrar
+  correos_copia: string[]; // Array de emails para CC
+  notificar_asignacion: boolean;
+  notificar_mantenimiento: boolean;
+  dias_anticipacion_alerta?: number; // Días antes del mes para avisar
+  smtp_host?: string; // Mock fields for realism
+  smtp_port?: string;
 }

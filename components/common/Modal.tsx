@@ -21,14 +21,16 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className={`bg-white rounded-xl shadow-xl ${maxWidth} w-full p-6`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6 border-b pb-4">
+      <div className={`bg-white rounded-xl shadow-xl ${maxWidth} w-full max-h-[90vh] flex flex-col`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-6 border-b shrink-0">
           <h3 className="text-xl font-bold text-slate-800">{title}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-6 h-6" />
           </button>
         </div>
-        {children}
+        <div className="p-6 overflow-y-auto">
+            {children}
+        </div>
       </div>
     </div>
   );

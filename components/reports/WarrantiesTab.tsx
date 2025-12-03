@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { ReporteGarantia } from '../../types';
+import { ReporteGarantia, EstadoEquipo } from '../../types';
 import { reportService } from '../../services/reportService';
 import { AlertTriangle, ShieldCheck, Download, Printer } from 'lucide-react';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 
 export const WarrantiesTab: React.FC = () => {
@@ -12,7 +11,9 @@ export const WarrantiesTab: React.FC = () => {
 
   useEffect(() => {
     reportService.getWarranties().then((data) => {
-        setGarantias(data.sort((a,b) => a.dias_restantes - b.dias_restantes));
+        // Filtramos para asegurar que no se muestren equipos dados de Baja
+        const activeWarranties = data.filter(w => w.equipo.estado !== EstadoEquipo.BAJA);
+        setGarantias(activeWarranties.sort((a,b) => a.dias_restantes - b.dias_restantes));
         setLoading(false);
     });
   }, []);
@@ -100,7 +101,7 @@ export const WarrantiesTab: React.FC = () => {
             
             <div className="flex gap-2">
                 <button 
-                    onClick={() => downloadCSV(prepareData(), 'Reporte_Garantias')}
+                    onClick={() => generateExcelFromData(prepareData(), 'Reporte_Garantias')}
                     className="flex items-center gap-2 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                     <Download className="w-4 h-4" /> Excel

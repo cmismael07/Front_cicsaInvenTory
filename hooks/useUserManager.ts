@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/mockApi';
 import { Usuario, Departamento, Puesto, RolUsuario } from '../types';
 import Swal from 'sweetalert2';
