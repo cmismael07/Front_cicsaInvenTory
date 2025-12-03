@@ -5,7 +5,7 @@ import { MaintenanceExecutionModal } from './MaintenanceExecutionModal';
 import { maintenancePlanningService } from '../../services/maintenancePlanningService';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 
 interface PlanningCalendarProps {
@@ -106,7 +106,7 @@ export const PlanningCalendar: React.FC<PlanningCalendarProps> = ({ plan, initia
             });
         });
     });
-    downloadCSV(flatData, `Plan_Mantenimiento_${plan.anio}_${plan.ciudad_nombre || 'General'}`);
+    generateExcelFromData(flatData, `Plan_Mantenimiento_${plan.anio}_${plan.ciudad_nombre || 'General'}`);
   };
 
   const handleExportPDF = () => {

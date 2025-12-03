@@ -4,7 +4,7 @@ import { RegistroMantenimiento } from '../../types';
 import { reportService } from '../../services/reportService';
 import { formatCurrency } from '../../utils/formatters';
 import { Wrench, Download, Printer, Eye, FileText, Search } from 'lucide-react';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 import { Modal } from '../common/Modal';
 
@@ -21,7 +21,6 @@ export const MaintenanceReportTab: React.FC = () => {
     });
   }, []);
 
-  // Lógica de filtrado
   const filteredRegistros = registros.filter(reg => {
       if (!filterText) return true;
       const searchLower = filterText.toLowerCase();
@@ -38,11 +37,11 @@ export const MaintenanceReportTab: React.FC = () => {
     return filteredRegistros.map(reg => ({
       'Fecha': reg.fecha,
       'Equipo': `${reg.equipo_codigo} - ${reg.equipo_modelo}`,
-      'Tipo Mantenimiento': reg.tipo_mantenimiento,
+      'Tipo': reg.tipo_mantenimiento, // Alineado con UI
       'Proveedor': reg.proveedor,
       'Costo': formatCurrency(reg.costo),
-      'Detalle Trabajo': reg.descripcion,
-      'Archivo Orden': reg.archivo_orden || 'No adjunto'
+      'Trabajo Realizado': reg.descripcion, // Alineado con UI
+      'Doc': reg.archivo_orden ? 'Adjunto' : 'Pendiente' // Alineado con UI
     }));
   };
 
@@ -68,8 +67,6 @@ export const MaintenanceReportTab: React.FC = () => {
         .badge-preventivo { background-color: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
         
         .font-bold { font-weight: 700; }
-        .text-slate-500 { color: #64748b; }
-        .mono { font-family: monospace; }
       </style>
       
       <div class="summary-row">
@@ -119,10 +116,7 @@ export const MaintenanceReportTab: React.FC = () => {
            `;
        });
 
-       htmlContent += `
-            </tbody>
-        </table>
-       `;
+       htmlContent += `</tbody></table>`;
     }
 
     printCustomHTML(htmlContent, 'Historial de Mantenimientos');
@@ -147,7 +141,7 @@ export const MaintenanceReportTab: React.FC = () => {
             
             <div className="flex gap-2">
                 <button 
-                    onClick={() => downloadCSV(prepareExportData(), 'Reporte_Mantenimiento')}
+                    onClick={() => generateExcelFromData(prepareExportData(), 'Reporte_Mantenimiento')}
                     className="flex items-center gap-2 bg-white border border-slate-300 shadow-sm px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-50 font-medium text-sm transition-colors"
                 >
                     <Download className="w-4 h-4" /> Excel

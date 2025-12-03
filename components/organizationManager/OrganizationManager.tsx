@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/mockApi';
 import { Departamento, Puesto, Ciudad } from '../../types';
 import { Building2, Briefcase, MapPin } from 'lucide-react';
-import EntityManager from '../EntityManager';
+import EntityManager from './EntityManager';
 
 type TabType = 'DEPTS' | 'JOBS' | 'CITIES';
 

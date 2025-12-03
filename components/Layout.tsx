@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings as SettingsIcon, Building2, Users, Wrench, Lock, ChevronDown, Key, CalendarClock, Mail } from 'lucide-react';
+import { LayoutDashboard, Laptop, FileText, LogOut, Bell, User as UserIcon, Menu, X, Settings as SettingsIcon, Building2, Users, Wrench, Lock, ChevronDown, Key, CalendarClock, Mail, Database } from 'lucide-react';
 import { api } from '../services/mockApi';
 import { Usuario, Notificacion } from '../types';
 import Swal from 'sweetalert2';
@@ -111,6 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
           <div className="pt-4 mt-4 border-t border-slate-100">
+            <NavItem to="/migracion" icon={Database} label="Migración" />
             <NavItem to="/configuracion" icon={Mail} label="Config. Correo" />
           </div>
         </nav>
@@ -142,6 +144,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           <NavItem to="/planificacion" icon={CalendarClock} label="Planificación" />
           <NavItem to="/licencias" icon={Key} label="Licencias" />
           <NavItem to="/reportes" icon={FileText} label="Reportes" />
+          <NavItem to="/migracion" icon={Database} label="Migración" />
           <NavItem to="/configuracion" icon={Mail} label="Config. Correo" />
         </nav>
         <div className="p-4 border-t border-slate-100">

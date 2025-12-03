@@ -1,11 +1,9 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { HistorialAsignacion, Usuario, Equipo, Licencia } from '../../types';
 import { reportService } from '../../services/reportService';
 import { Eye, User, Laptop, Key, Download, Search, FileText, Printer, Upload } from 'lucide-react';
 import { Modal } from '../common/Modal';
-import { downloadCSV } from '../../utils/csvExporter';
+import { generateExcelFromData } from '../../utils/excelHelper';
 import { printCustomHTML } from '../../utils/documentGenerator';
 import Swal from 'sweetalert2';
 
@@ -255,7 +253,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
         
         <div className="flex gap-2">
             <button 
-                onClick={() => downloadCSV(prepareExportData(), 'Reporte_Activos_Por_Usuario')}
+                onClick={() => generateExcelFromData(prepareExportData(), 'Reporte_Activos_Por_Usuario')}
                 className="flex items-center gap-2 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
                 <Download className="w-4 h-4" /> Excel

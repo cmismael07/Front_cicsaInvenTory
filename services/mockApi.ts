@@ -365,6 +365,203 @@ export const api = {
     }
   },
 
+  // BULK OPERATIONS
+  bulkCreateEquipos: async (data: any[]) => {
+    await simulateDelay();
+    let count = 0;
+    
+    // Find default warehouse
+    const defaultBodega = MOCK_DEPARTAMENTOS.find(d => d.es_bodega) || MOCK_DEPARTAMENTOS[0];
+
+    data.forEach(row => {
+        // Find Type ID by name (insensitive)
+        const type = MOCK_TIPOS.find(t => t.nombre.toLowerCase() === row['Tipo Equipo']?.toLowerCase());
+        if (!type) return; // Skip invalid types
+
+        const newId = MOCK_EQUIPOS.length + 1 + count;
+        
+        MOCK_EQUIPOS.push({
+            id: newId,
+            codigo_activo: row['Codigo Activo'],
+            numero_serie: row['Serie'],
+            marca: row['Marca'],
+            modelo: row['Modelo'],
+            tipo_equipo_id: type.id,
+            tipo_nombre: type.nombre,
+            fecha_compra: row['Fecha Compra'] || new Date().toISOString().split('T')[0],
+            valor_compra: parseFloat(row['Valor'] || '0'),
+            anos_garantia: 1,
+            estado: EstadoEquipo.DISPONIBLE,
+            ubicacion_id: defaultBodega.id,
+            ubicacion_nombre: defaultBodega.nombre,
+            observaciones: 'Migración Masiva'
+        });
+        
+        // Log
+        MOCK_HISTORIAL.push({
+            id: MOCK_HISTORIAL.length + 1,
+            equipo_id: newId,
+            equipo_codigo: row['Codigo Activo'],
+            tipo_accion: 'CREACION',
+            fecha: new Date().toISOString().split('T')[0],
+            usuario_responsable: 'Admin',
+            detalle: 'Carga Masiva'
+        });
+        count++;
+    });
+    return count;
+  },
+
+  bulkCreateUsuarios: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_USERS.some(u => u.correo === row['Email'])) return; // Skip duplicates
+
+          const newId = MOCK_USERS.length + 1 + count;
+          MOCK_USERS.push({
+              id: newId,
+              nombres: row['Nombres'],
+              apellidos: row['Apellidos'],
+              nombre_completo: `${row['Nombres']} ${row['Apellidos']}`,
+              nombre_usuario: row['Usuario'],
+              numero_empleado: row['Numero Empleado'],
+              correo: row['Email'],
+              password: '123', // Default
+              rol: (row['Rol'] as RolUsuario) || RolUsuario.USUARIO,
+              activo: true
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreateLicencias: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          // Find Type or Create
+          let type = MOCK_TIPOS_LICENCIA.find(t => t.nombre.toLowerCase() === row['Tipo Software']?.toLowerCase());
+          if (!type && row['Tipo Software']) {
+              type = {
+                  id: MOCK_TIPOS_LICENCIA.length + 1,
+                  nombre: row['Tipo Software'],
+                  proveedor: row['Proveedor'] || 'Desconocido',
+                  descripcion: 'Creado por migración'
+              };
+              MOCK_TIPOS_LICENCIA.push(type);
+          }
+
+          if (type) {
+              const newId = MOCK_LICENCIAS.length + 1 + count;
+              MOCK_LICENCIAS.push({
+                  id: newId,
+                  tipo_id: type.id,
+                  tipo_nombre: type.nombre,
+                  clave: row['Clave'],
+                  fecha_compra: row['Fecha Compra'] || new Date().toISOString().split('T')[0],
+                  fecha_vencimiento: row['Fecha Vencimiento'] || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+                  usuario_id: null
+              });
+              count++;
+          }
+      });
+      return count;
+  },
+
+  bulkCreateDepartamentos: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_DEPARTAMENTOS.some(d => d.nombre.toLowerCase() === row['Nombre Departamento']?.toLowerCase())) return;
+
+          const ciudad = MOCK_CIUDADES.find(c => c.nombre.toLowerCase() === row['Ciudad']?.toLowerCase());
+          
+          const newId = MOCK_DEPARTAMENTOS.length + 1 + count;
+          MOCK_DEPARTAMENTOS.push({
+              id: newId,
+              nombre: row['Nombre Departamento'],
+              es_bodega: row['Es Bodega (SI/NO)']?.toUpperCase() === 'SI',
+              ciudad_id: ciudad?.id,
+              ciudad_nombre: ciudad?.nombre
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreatePuestos: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      data.forEach(row => {
+          if (MOCK_PUESTOS.some(p => p.nombre.toLowerCase() === row['Nombre Cargo']?.toLowerCase())) return;
+
+          const newId = MOCK_PUESTOS.length + 1 + count;
+          MOCK_PUESTOS.push({
+              id: newId,
+              nombre: row['Nombre Cargo']
+          });
+          count++;
+      });
+      return count;
+  },
+
+  bulkCreateAsignaciones: async (data: any[]) => {
+      await simulateDelay();
+      let count = 0;
+      
+      data.forEach(row => {
+          // Find User by Email
+          const user = MOCK_USERS.find(u => u.correo === row['Correo Usuario']);
+          // Find Equipment by Code
+          const equipoIndex = MOCK_EQUIPOS.findIndex(e => e.codigo_activo === row['Codigo Activo']);
+          
+          if (user && equipoIndex >= 0) {
+              const equipo = MOCK_EQUIPOS[equipoIndex];
+              
+              // Only assign if currently available
+              if (equipo.estado === EstadoEquipo.DISPONIBLE || equipo.estado === EstadoEquipo.ACTIVO) {
+                  // Update Equipment
+                  MOCK_EQUIPOS[equipoIndex] = {
+                      ...equipo,
+                      estado: EstadoEquipo.ACTIVO,
+                      responsable_id: user.id,
+                      responsable_nombre: user.nombre_completo,
+                      ubicacion_nombre: row['Ubicacion Fisica'] || 'Oficina',
+                      observaciones: row['Observaciones'] || 'Migración Masiva'
+                  };
+
+                  // Log History
+                  MOCK_HISTORIAL.push({
+                      id: MOCK_HISTORIAL.length + 1,
+                      equipo_id: equipo.id,
+                      equipo_codigo: equipo.codigo_activo,
+                      tipo_accion: 'ASIGNACION',
+                      fecha: row['Fecha Asignacion'] || new Date().toISOString().split('T')[0],
+                      usuario_responsable: 'Admin',
+                      detalle: `Asignado por migración a ${user.nombre_completo}`
+                  });
+
+                  // Add Assignment Record
+                  MOCK_ASIGNACIONES.push({
+                      id: MOCK_ASIGNACIONES.length + 1,
+                      equipo_codigo: equipo.codigo_activo,
+                      equipo_modelo: equipo.modelo,
+                      usuario_nombre: user.nombre_completo,
+                      usuario_departamento: user.departamento_nombre || '',
+                      fecha_inicio: row['Fecha Asignacion'] || new Date().toISOString().split('T')[0],
+                      fecha_fin: null,
+                      ubicacion: row['Ubicacion Fisica'] || 'Oficina',
+                      archivo_pdf: undefined 
+                  });
+                  
+                  count++;
+              }
+          }
+      });
+      return count;
+  },
+
   // Actions
   asignarEquipo: async (id: number, usuarioId: number, ubicacion: string, observaciones: string, reporteHtml?: string) => {
     await simulateDelay();
@@ -735,7 +932,7 @@ export const api = {
     // Filter pending/in-process details for this month
     return MOCK_DETALLES_PLAN.filter(d => 
         activePlanIds.includes(d.plan_id) && 
-        d.mes_programado === currentMonth && 
+        d.mes_programado === currentMonth &&
         d.estado !== EstadoPlan.REALIZADO
     );
   },
