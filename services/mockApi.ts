@@ -1,4 +1,5 @@
-import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento, EmailConfig } from '../types';
+
+import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento, EmailConfig, Pais } from '../types';
 import { liveApi } from './liveApi';
 import Swal from 'sweetalert2';
 
@@ -9,10 +10,14 @@ const USE_LIVE_API = false;
 
 // --- Mock Data Initialization ---
 
+let MOCK_PAISES: Pais[] = [
+  { id: 1, nombre: 'Ecuador', abreviatura: 'EC' }
+];
+
 let MOCK_CIUDADES: Ciudad[] = [
-  { id: 1, nombre: 'Guayaquil' },
-  { id: 2, nombre: 'Quito' },
-  { id: 3, nombre: 'Cuenca' }
+  { id: 1, nombre: 'Guayaquil', abreviatura: 'GYE', pais_id: 1, pais_nombre: 'Ecuador' },
+  { id: 2, nombre: 'Quito', abreviatura: 'UIO', pais_id: 1, pais_nombre: 'Ecuador' },
+  { id: 3, nombre: 'Cuenca', abreviatura: 'CUE', pais_id: 1, pais_nombre: 'Ecuador' }
 ];
 
 let MOCK_DEPARTAMENTOS: Departamento[] = [
@@ -165,6 +170,69 @@ export const api = {
   },
 
   // Organization
+  
+  // --- PAISES (NEW) ---
+  getPaises: async () => { await simulateDelay(); return [...MOCK_PAISES]; },
+  createPais: async (data: any) => {
+      await simulateDelay();
+      const newId = MOCK_PAISES.length + 1;
+      const newItem = { ...data, id: newId };
+      MOCK_PAISES.push(newItem);
+      return newItem;
+  },
+  updatePais: async (id: number, data: any) => {
+      await simulateDelay();
+      const idx = MOCK_PAISES.findIndex(p => p.id === id);
+      if (idx >= 0) {
+          MOCK_PAISES[idx] = { ...MOCK_PAISES[idx], ...data };
+          return MOCK_PAISES[idx];
+      }
+  },
+  deletePais: async (id: number) => {
+      await simulateDelay();
+      // Validación: No borrar si tiene ciudades
+      const hasCities = MOCK_CIUDADES.some(c => c.pais_id === id);
+      if (hasCities) throw new Error("No se puede eliminar el país, tiene ciudades asignadas.");
+      const idx = MOCK_PAISES.findIndex(p => p.id === id);
+      if (idx >= 0) MOCK_PAISES.splice(idx, 1);
+  },
+
+  // --- CIUDADES ---
+  getCiudades: async () => { await simulateDelay(); return [...MOCK_CIUDADES]; },
+  createCiudad: async (data: any) => {
+      await simulateDelay();
+      const newId = MOCK_CIUDADES.length + 1;
+      const pais = MOCK_PAISES.find(p => p.id === Number(data.pais_id));
+      const newItem = { 
+          ...data, 
+          id: newId,
+          pais_nombre: pais?.nombre
+      };
+      MOCK_CIUDADES.push(newItem);
+      return newItem;
+  },
+  updateCiudad: async (id: number, data: any) => {
+      await simulateDelay();
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) {
+          const pais = data.pais_id ? MOCK_PAISES.find(p => p.id === Number(data.pais_id)) : null;
+          MOCK_CIUDADES[idx] = { 
+              ...MOCK_CIUDADES[idx], 
+              ...data,
+              ...(pais ? { pais_nombre: pais.nombre } : {})
+          };
+          return MOCK_CIUDADES[idx];
+      }
+  },
+  deleteCiudad: async (id: number) => {
+      await simulateDelay();
+      const hasDepts = MOCK_DEPARTAMENTOS.some(d => d.ciudad_id === id);
+      if (hasDepts) throw new Error("No se puede eliminar, tiene departamentos asignados.");
+      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
+      if (idx >= 0) MOCK_CIUDADES.splice(idx, 1);
+  },
+
+  // --- DEPARTAMENTOS ---
   getDepartamentos: async () => { await simulateDelay(); return [...MOCK_DEPARTAMENTOS]; },
   createDepartamento: async (data: any) => {
     await simulateDelay();
@@ -204,6 +272,7 @@ export const api = {
     }
   },
   
+  // --- PUESTOS ---
   getPuestos: async () => { await simulateDelay(); return [...MOCK_PUESTOS]; },
   createPuesto: async (data: any) => {
     await simulateDelay();
@@ -231,30 +300,6 @@ export const api = {
     if (idx >= 0) {
         MOCK_PUESTOS.splice(idx, 1);
     }
-  },
-
-  getCiudades: async () => { await simulateDelay(); return [...MOCK_CIUDADES]; },
-  createCiudad: async (data: any) => {
-      await simulateDelay();
-      const newId = MOCK_CIUDADES.length + 1;
-      const newItem = { ...data, id: newId };
-      MOCK_CIUDADES.push(newItem);
-      return newItem;
-  },
-  updateCiudad: async (id: number, data: any) => {
-      await simulateDelay();
-      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
-      if (idx >= 0) {
-          MOCK_CIUDADES[idx] = { ...MOCK_CIUDADES[idx], ...data };
-          return MOCK_CIUDADES[idx];
-      }
-  },
-  deleteCiudad: async (id: number) => {
-      await simulateDelay();
-      const hasDepts = MOCK_DEPARTAMENTOS.some(d => d.ciudad_id === id);
-      if (hasDepts) throw new Error("No se puede eliminar, tiene departamentos asignados.");
-      const idx = MOCK_CIUDADES.findIndex(c => c.id === id);
-      if (idx >= 0) MOCK_CIUDADES.splice(idx, 1);
   },
 
   // Users

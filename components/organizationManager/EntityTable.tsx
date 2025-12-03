@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Edit, Trash2, Warehouse, MapPin } from 'lucide-react';
+import { Edit, Trash2, Warehouse, MapPin, Globe } from 'lucide-react';
 import { EntityBase } from '../../hooks/useEntityManager';
 
 interface EntityTableProps {
@@ -18,6 +18,15 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
           <tr>
             <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">ID</th>
             <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Nombre</th>
+            {/* Columnas Dinámicas */}
+            {items.some(i => i.abreviatura) && (
+               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Abreviatura</th>
+            )}
+            {items.some(i => i.pais_nombre) && (
+               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">País</th>
+            )}
+            {/* Fin Columnas Dinámicas */}
+            
             {withWarehouseOption && (
                 <>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Ciudad</th>
@@ -32,6 +41,24 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 w-20">#{item.id}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{item.nombre}</td>
+              
+              {/* Celda Abreviatura */}
+              {items.some(i => i.abreviatura) && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono">
+                      {item.abreviatura || '-'}
+                  </td>
+              )}
+
+              {/* Celda País */}
+              {items.some(i => i.pais_nombre) && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                      <div className="flex items-center gap-1.5">
+                          <Globe className="w-3 h-3 text-slate-400" />
+                          {item.pais_nombre}
+                      </div>
+                  </td>
+              )}
+
               {withWarehouseOption && (
                 <>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -77,7 +104,7 @@ export const EntityTable: React.FC<EntityTableProps> = ({ items, withWarehouseOp
           ))}
           {items.length === 0 && (
             <tr>
-              <td colSpan={withWarehouseOption ? 5 : 3} className="px-6 py-8 text-center text-slate-500 text-sm">
+              <td colSpan={10} className="px-6 py-8 text-center text-slate-500 text-sm">
                 No hay registros creados.
               </td>
             </tr>

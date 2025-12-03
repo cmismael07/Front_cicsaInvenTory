@@ -1,5 +1,4 @@
 
-
 export enum RolUsuario {
   ADMIN = 'Administrador',
   TECNICO = 'Técnico',
@@ -29,6 +28,22 @@ export enum EstadoPlan {
   RETRASADO = 'Retrasado'
 }
 
+// --- Organization ---
+
+export interface Pais {
+  id: number;
+  nombre: string;
+  abreviatura: string;
+}
+
+export interface Ciudad {
+  id: number;
+  nombre: string;
+  abreviatura?: string;
+  pais_id?: number;
+  pais_nombre?: string;
+}
+
 export interface Departamento {
   id: number;
   nombre: string;
@@ -38,11 +53,6 @@ export interface Departamento {
 }
 
 export interface Puesto {
-  id: number;
-  nombre: string;
-}
-
-export interface Ciudad {
   id: number;
   nombre: string;
 }

@@ -11,7 +11,7 @@ import { Equipo } from '../../types';
 const EquipmentPage: React.FC = () => {
   const { 
     groupedEquipos, 
-    tipos, usuarios, bodegas,
+    tipos, usuarios, bodegas, cities, countries,
     filters, setFilters, 
     grouping, setGrouping, 
     handleAction 
@@ -83,6 +83,8 @@ const EquipmentPage: React.FC = () => {
           tipos={tipos} 
           usuarios={usuarios} 
           bodegas={bodegas}
+          cities={cities}
+          countries={countries}
           onSubmit={onFormSubmit} 
           onCancel={closeModal} 
         />

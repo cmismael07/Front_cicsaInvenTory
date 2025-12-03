@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo } from '../types';
+import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo, Ciudad, Pais } from '../types';
 import { equipmentService, catalogService } from '../services/equipmentService';
+import { api } from '../services/mockApi'; // Direct access for aux data
 import { generateAssignmentDocument, getAssignmentDocumentHTML } from '../utils/documentGenerator';
 import Swal from 'sweetalert2';
 
@@ -13,6 +14,8 @@ export const useEquipment = () => {
   const [tipos, setTipos] = useState<TipoEquipo[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [bodegas, setBodegas] = useState<Departamento[]>([]);
+  const [cities, setCities] = useState<Ciudad[]>([]);
+  const [countries, setCountries] = useState<Pais[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -37,16 +40,20 @@ export const useEquipment = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [eqData, tipoData, userData, bodegasData] = await Promise.all([
+      const [eqData, tipoData, userData, bodegasData, cityData, countryData] = await Promise.all([
         equipmentService.getAll(),
         equipmentService.getTypes(),
         catalogService.getUsers(),
-        catalogService.getWarehouses()
+        catalogService.getWarehouses(),
+        api.getCiudades(),
+        api.getPaises()
       ]);
       setEquipos(eqData);
       setTipos(tipoData);
       setUsuarios(userData);
       setBodegas(bodegasData);
+      setCities(cityData);
+      setCountries(countryData);
     } catch (error) {
       console.error("Error loading data", error);
     } finally {
@@ -169,7 +176,7 @@ export const useEquipment = () => {
 
   return {
     equipos, filteredEquipos, groupedEquipos,
-    tipos, usuarios, bodegas, loading,
+    tipos, usuarios, bodegas, cities, countries, loading,
     filters, setFilters,
     grouping, setGrouping,
     handleAction
