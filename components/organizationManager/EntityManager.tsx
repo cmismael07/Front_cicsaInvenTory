@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { useEntityManager, EntityBase } from '../../hooks/useEntityManager';
 import { EntityTable } from './EntityTable';
 import { EntityModal } from './EntityModal';
-import { Ciudad } from '../../types';
+import { Ciudad, Pais } from '../../types';
 
 interface EntityManagerProps {
   title: string;
@@ -15,6 +15,7 @@ interface EntityManagerProps {
   onRefresh: () => void;
   withWarehouseOption?: boolean;
   cities?: Ciudad[];
+  countries?: Pais[]; // New Prop
 }
 
 const EntityManager: React.FC<EntityManagerProps> = (props) => {

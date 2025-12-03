@@ -8,6 +8,10 @@ export interface EntityBase {
   es_bodega?: boolean;
   ciudad_id?: number;
   ciudad_nombre?: string;
+  // Nuevos campos para Paises y Ciudades
+  abreviatura?: string; 
+  pais_id?: number;
+  pais_nombre?: string;
 }
 
 interface UseEntityManagerProps {

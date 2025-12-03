@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
-import { Save, Warehouse } from 'lucide-react';
+import { Save, Warehouse, Globe } from 'lucide-react';
 import { EntityBase } from '../../hooks/useEntityManager';
-import { Ciudad } from '../../types';
+import { Ciudad, Pais } from '../../types';
 import Swal from 'sweetalert2';
+import { api } from '../../services/mockApi';
 
 interface EntityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string; // "Departamento" or "Puesto"
+  title: string; // "Departamento", "Puesto", "Ciudad", "País"
   editingItem: EntityBase | null;
   withWarehouseOption?: boolean;
   cities?: Ciudad[];
@@ -25,23 +26,35 @@ export const EntityModal: React.FC<EntityModalProps> = ({
   cities = [],
   onSubmit 
 }) => {
-  const [formData, setFormData] = useState<{nombre: string, es_bodega: boolean, ciudad_id: string}>({ 
+  const [formData, setFormData] = useState<{nombre: string, abreviatura: string, es_bodega: boolean, ciudad_id: string, pais_id: string}>({ 
     nombre: '', 
+    abreviatura: '',
     es_bodega: false, 
-    ciudad_id: '' 
+    ciudad_id: '',
+    pais_id: ''
   });
   const [loading, setLoading] = useState(false);
+  const [paises, setPaises] = useState<Pais[]>([]);
+
+  useEffect(() => {
+    // Cargar países si es necesario (para modal ciudad)
+    if (isOpen && title === 'Ciudad') {
+        api.getPaises().then(setPaises);
+    }
+  }, [isOpen, title]);
 
   useEffect(() => {
     if (isOpen) {
       if (editingItem) {
         setFormData({ 
           nombre: editingItem.nombre, 
+          abreviatura: editingItem.abreviatura || '',
           es_bodega: !!editingItem.es_bodega,
-          ciudad_id: editingItem.ciudad_id ? String(editingItem.ciudad_id) : ''
+          ciudad_id: editingItem.ciudad_id ? String(editingItem.ciudad_id) : '',
+          pais_id: editingItem.pais_id ? String(editingItem.pais_id) : ''
         });
       } else {
-        setFormData({ nombre: '', es_bodega: false, ciudad_id: '' });
+        setFormData({ nombre: '', abreviatura: '', es_bodega: false, ciudad_id: '', pais_id: '' });
       }
     }
   }, [isOpen, editingItem]);
@@ -50,13 +63,19 @@ export const EntityModal: React.FC<EntityModalProps> = ({
     e.preventDefault();
     if (!formData.nombre.trim()) return;
 
-    const dataToSend = {
-      nombre: formData.nombre,
-      ...(withWarehouseOption ? { 
-        es_bodega: formData.es_bodega,
-        ciudad_id: formData.ciudad_id ? Number(formData.ciudad_id) : undefined 
-      } : {})
-    };
+    const dataToSend: any = { nombre: formData.nombre };
+
+    if (title === 'País') {
+        dataToSend.abreviatura = formData.abreviatura;
+    }
+    if (title === 'Ciudad') {
+        dataToSend.abreviatura = formData.abreviatura;
+        dataToSend.pais_id = formData.pais_id ? Number(formData.pais_id) : undefined;
+    }
+    if (withWarehouseOption) {
+        dataToSend.es_bodega = formData.es_bodega;
+        dataToSend.ciudad_id = formData.ciudad_id ? Number(formData.ciudad_id) : undefined;
+    }
 
     setLoading(true);
     try {
@@ -82,10 +101,44 @@ export const EntityModal: React.FC<EntityModalProps> = ({
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             value={formData.nombre}
             onChange={e => setFormData({...formData, nombre: e.target.value})}
-            placeholder={`Ej. ${title === 'Departamento' ? 'Marketing' : 'Analista Sr.'}`}
+            placeholder={`Ej. ${title === 'Departamento' ? 'Marketing' : 'Nombre'}`}
           />
         </div>
 
+        {/* Campo Abreviatura (País y Ciudad) */}
+        {(title === 'País' || title === 'Ciudad') && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Abreviatura / Siglas</label>
+              <input 
+                type="text" 
+                maxLength={5}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                value={formData.abreviatura}
+                onChange={e => setFormData({...formData, abreviatura: e.target.value.toUpperCase()})}
+                placeholder="Ej. EC, GYE"
+              />
+            </div>
+        )}
+
+        {/* Selector de País (Solo para Ciudad) */}
+        {title === 'Ciudad' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">País</label>
+              <select 
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                value={formData.pais_id}
+                onChange={e => setFormData({...formData, pais_id: e.target.value})}
+              >
+                <option value="">Seleccione un país...</option>
+                {paises.map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+        )}
+
+        {/* Campos para Departamento (Ciudad y Bodega) */}
         {withWarehouseOption && cities.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>

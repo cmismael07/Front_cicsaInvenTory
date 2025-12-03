@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo } from '../../types';
-import { Save, Upload, X, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Equipo, TipoEquipo, Usuario, Departamento, EstadoEquipo, Ciudad, Pais } from '../../types';
+import { Save, Upload, X, FileText, RefreshCw } from 'lucide-react';
 import { ModalAction } from '../../hooks/useEquipment';
 
 interface EquipmentFormProps {
@@ -10,12 +10,14 @@ interface EquipmentFormProps {
   tipos: TipoEquipo[];
   usuarios: Usuario[];
   bodegas: Departamento[];
+  cities?: Ciudad[];
+  countries?: Pais[];
   onSubmit: (data: any) => Promise<boolean>;
   onCancel: () => void;
 }
 
 export const EquipmentForm: React.FC<EquipmentFormProps> = ({ 
-  action, equipo, tipos, usuarios, bodegas, onSubmit, onCancel 
+  action, equipo, tipos, usuarios, bodegas, cities = [], countries = [], onSubmit, onCancel 
 }) => {
   const [formData, setFormData] = useState<any>(() => {
     // Initial State Logic based on Action
@@ -36,6 +38,30 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
 
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Auto-generate Asset Code Logic
+  useEffect(() => {
+    if (action === 'CREATE') {
+      // 1. Encontrar Bodega seleccionada
+      const selectedBodega = bodegas.find(b => b.id === Number(formData.ubicacion_id));
+      if (!selectedBodega) return;
+
+      // 2. Encontrar Ciudad de la Bodega
+      const selectedCity = cities.find(c => c.id === selectedBodega.ciudad_id);
+      if (!selectedCity) return;
+
+      // 3. Encontrar País de la Ciudad
+      const selectedCountry = countries.find(p => p.id === selectedCity.pais_id);
+      
+      const serie = formData.numero_serie ? formData.numero_serie.trim().toUpperCase() : '';
+      
+      if (serie && selectedCountry && selectedCity) {
+        // Formato: PAISCIUDADSERIE (ej: ECGYESN123456) - Sin guiones
+        const newCode = `${selectedCountry.abreviatura}${selectedCity.abreviatura}${serie}`.toUpperCase();
+        setFormData((prev: any) => ({ ...prev, codigo_activo: newCode }));
+      }
+    }
+  }, [formData.ubicacion_id, formData.numero_serie, action, bodegas, cities, countries]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,18 +89,57 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
       {/* --- CREATE / EDIT --- */}
       {(action === 'CREATE' || action === 'EDIT') && (
         <>
+          {/* Fila 1: Ubicación y Tipo (Definen el contexto) */}
           <div className="grid grid-cols-2 gap-4">
+            {action === 'CREATE' ? (
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación Inicial</label>
+                    <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        value={formData.ubicacion_id} onChange={e => setFormData({...formData, ubicacion_id: Number(e.target.value)})}>
+                        {bodegas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                    </select>
+                </div>
+            ) : (
+                // En edición la ubicación suele ser informativa o se maneja por movimientos
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación Actual</label>
+                    <input type="text" disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500"
+                        value={formData.ubicacion_nombre || ''} />
+                </div>
+            )}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Código Activo</label>
-              <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" 
-                value={formData.codigo_activo} onChange={e => setFormData({...formData, codigo_activo: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Serie</label>
-              <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" 
-                value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo Equipo</label>
+                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  value={formData.tipo_equipo_id} onChange={e => setFormData({...formData, tipo_equipo_id: Number(e.target.value)})}>
+                  {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
             </div>
           </div>
+
+          {/* Fila 2: Serie y Código (Serie detona código) */}
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Número de Serie</label>
+              <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="Ingrese serie..."
+                value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-blue-800 mb-1 flex items-center gap-1">
+                 Código Activo 
+                 {action === 'CREATE' && <RefreshCw className="w-3 h-3 text-blue-500 animate-pulse" />}
+              </label>
+              <input required type="text" className="w-full px-3 py-2 border border-blue-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 bg-white" 
+                placeholder="Autogenerado..."
+                value={formData.codigo_activo} 
+                onChange={e => setFormData({...formData, codigo_activo: e.target.value})} 
+                // En CREATE es semi-automático (se puede editar pero se sugiere), en EDIT es editable
+              />
+              {action === 'CREATE' && <p className="text-[10px] text-blue-500 mt-1">Formato: PAISCIUDADSERIE</p>}
+            </div>
+          </div>
+
+          {/* Fila 3: Marca y Modelo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Marca</label>
@@ -87,24 +152,8 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
                 value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo Equipo</label>
-                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.tipo_equipo_id} onChange={e => setFormData({...formData, tipo_equipo_id: Number(e.target.value)})}>
-                  {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                </select>
-            </div>
-            {action === 'CREATE' && (
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Ubicación Inicial</label>
-                    <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.ubicacion_id} onChange={e => setFormData({...formData, ubicacion_id: Number(e.target.value)})}>
-                        {bodegas.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-                    </select>
-                </div>
-            )}
-          </div>
+
+          {/* Fila 4: Detalles Específicos */}
           {isLaptop() && (
              <div>
                <label className="block text-sm font-medium text-slate-700 mb-1">Serie Cargador</label>
@@ -112,22 +161,24 @@ export const EquipmentForm: React.FC<EquipmentFormProps> = ({
                   value={formData.serie_cargador} onChange={e => setFormData({...formData, serie_cargador: e.target.value})} />
              </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Fila 5: Compra y Garantía */}
+          <div className="grid grid-cols-3 gap-4">
              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Compra</label>
-                <input type="date" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                <input type="date" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                    value={formData.fecha_compra} onChange={e => setFormData({...formData, fecha_compra: e.target.value})} />
              </div>
              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Años Garantía</label>
-                <input type="number" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                <label className="block text-sm font-medium text-slate-700 mb-1">Garantía (Años)</label>
+                <input type="number" min="0" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                    value={formData.anos_garantia} onChange={e => setFormData({...formData, anos_garantia: Number(e.target.value)})} />
              </div>
-          </div>
-          <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Valor Compra</label>
-              <input type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                 value={formData.valor_compra} onChange={e => setFormData({...formData, valor_compra: Number(e.target.value)})} />
+             <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Valor ($)</label>
+                <input type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                   value={formData.valor_compra} onChange={e => setFormData({...formData, valor_compra: Number(e.target.value)})} />
+             </div>
           </div>
         </>
       )}
