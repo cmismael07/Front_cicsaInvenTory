@@ -95,17 +95,35 @@ export const migrationService = {
 
     switch (type) {
       case 'EQUIPOS':
-        return await api.bulkCreateEquipos(data);
+        {
+          const res = await api.bulkCreateEquipos(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       case 'USUARIOS':
-        return await api.bulkCreateUsuarios(data);
+        {
+          const res = await api.bulkCreateUsuarios(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       case 'LICENCIAS':
-        return await api.bulkCreateLicencias(data);
+        {
+          const res = await api.bulkCreateLicencias(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       case 'DEPARTAMENTOS':
-        return await api.bulkCreateDepartamentos(data);
+        {
+          const res = await api.bulkCreateDepartamentos(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       case 'PUESTOS':
-        return await api.bulkCreatePuestos(data);
+        {
+          const res = await api.bulkCreatePuestos(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       case 'ASIGNACIONES':
-        return await api.bulkCreateAsignaciones(data);
+        {
+          const res = await api.bulkCreateAsignaciones(data);
+          return typeof res === 'object' && res !== null && 'count' in res ? res.count : res;
+        }
       default:
         throw new Error("Tipo de migración no soportado");
     }

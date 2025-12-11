@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RegistroMantenimiento } from '../../types';
 import { reportService } from '../../services/reportService';
 import { formatCurrency } from '../../utils/formatters';
@@ -12,6 +12,7 @@ export const MaintenanceReportTab: React.FC = () => {
   const [registros, setRegistros] = useState<RegistroMantenimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [fileToView, setFileToView] = useState<string | null>(null);
+    const objectUrlRef = useRef<string | null>(null);
   const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
@@ -211,7 +212,42 @@ export const MaintenanceReportTab: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                 {reg.archivo_orden ? (
                                     <button 
-                                        onClick={() => setFileToView(reg.archivo_orden!)}
+                                        onClick={() => {
+                                            (async () => {
+                                                    const raw = reg.archivo_orden as string;
+                                                    // If frontend dev server runs on 3000, assume backend at same host port 8000
+                                                    const isFrontDev3000 = window.location.port === '3000';
+                                                    const backendOrigin = isFrontDev3000
+                                                        ? `${window.location.protocol}//${window.location.hostname}:8000`
+                                                        : window.location.origin;
+                                                    let url = raw;
+                                                    if (!raw.startsWith('http')) {
+                                                        if (raw.startsWith('/')) {
+                                                            url = backendOrigin + raw;
+                                                        } else if (raw.startsWith('storage/')) {
+                                                            url = backendOrigin + '/' + raw;
+                                                        } else {
+                                                            url = backendOrigin + '/storage/' + raw;
+                                                        }
+                                                    }
+                                                try {
+                                                    const res = await fetch(url, { cache: 'no-store' });
+                                                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                                                    const blob = await res.blob();
+                                                    const objUrl = URL.createObjectURL(blob);
+                                                    // revoke previous
+                                                    if (objectUrlRef.current) {
+                                                        try { URL.revokeObjectURL(objectUrlRef.current); } catch(e) {}
+                                                    }
+                                                    objectUrlRef.current = objUrl;
+                                                    setFileToView(objUrl);
+                                                } catch (e) {
+                                                    console.error('Previsualización fallida, abriendo ruta cruda', e);
+                                                    // fallback: try raw URL (may load SPA if misrouted)
+                                                    setFileToView(url);
+                                                }
+                                            })();
+                                        }}
                                         className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1 rounded transition-colors"
                                         title="Ver Orden de Servicio"
                                     >
@@ -233,15 +269,30 @@ export const MaintenanceReportTab: React.FC = () => {
         </div>
 
         {/* Modal para ver archivo */}
-        <Modal isOpen={!!fileToView} onClose={() => setFileToView(null)} title="Orden de Servicio Firmada">
-             <div className="p-8 text-center bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                 <div className="mb-4 text-slate-400">Simulación de Visor PDF</div>
-                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800">
-                     <FileText className="w-12 h-12 text-red-500 mb-2" />
-                     <p className="font-mono text-sm text-slate-700 dark:text-slate-200 font-medium break-all">{fileToView}</p>
-                     <p className="text-xs text-slate-400 mt-2">En producción, aquí se mostraría el PDF embebido.</p>
-                 </div>
-                 <div className="mt-6 flex justify-center">
+        <Modal isOpen={!!fileToView} onClose={() => {
+            if (objectUrlRef.current) {
+                try { URL.revokeObjectURL(objectUrlRef.current); } catch(e) {}
+                objectUrlRef.current = null;
+            }
+            setFileToView(null);
+        }} title="Orden de Servicio Firmada">
+             <div className="p-4">
+                 {fileToView ? (
+                     fileToView.toLowerCase().endsWith('.pdf') ? (
+                         <div className="w-full h-[70vh] bg-white dark:bg-slate-800 rounded">
+                             <iframe src={fileToView} title="Orden de Servicio" className="w-full h-full border-0 rounded" />
+                         </div>
+                     ) : (
+                         <div className="w-full flex justify-center items-start">
+                             <img src={fileToView} alt="Orden de Servicio" className="max-h-[70vh] object-contain rounded shadow" />
+                         </div>
+                     )
+                 ) : (
+                     <div className="p-8 text-center bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                         <div className="mb-4 text-slate-400">No hay archivo para mostrar</div>
+                     </div>
+                 )}
+                 <div className="mt-4 flex justify-center">
                     <button onClick={() => setFileToView(null)} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">
                         Cerrar Visor
                     </button>

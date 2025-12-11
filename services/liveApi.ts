@@ -2,8 +2,8 @@
 import { Equipo, Usuario, Departamento, Puesto, TipoEquipo, HistorialMovimiento, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, ReporteGarantia, Notificacion, Ciudad } from '../types';
 
 // URL base de tu API Laravel (ajusta el puerto si es necesario)
-//const API_URL = 'http://localhost:8000/api';
-const API_URL = 'http://10.68.104.57:8000/api';
+const API_URL = 'http://localhost:8000/api';
+// const API_URL = 'http://10.68.104.57:8000/api';
 
 // Helper para headers con Token (Asumiendo Laravel Sanctum)
 const getHeaders = () => {
@@ -55,15 +55,15 @@ export const liveApi = {
     const response = await fetch(`${API_URL}/departamentos`, { headers: getHeaders() });
     return handleResponse(response);
   },
-  createDepartamento: async (nombre: string): Promise<Departamento> => {
+  createDepartamento: async (data: any): Promise<Departamento> => {
     const response = await fetch(`${API_URL}/departamentos`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre })
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(data)
     });
     return handleResponse(response);
   },
-  updateDepartamento: async (id: number, nombre: string): Promise<Departamento> => {
+  updateDepartamento: async (id: number, data: any): Promise<Departamento> => {
     const response = await fetch(`${API_URL}/departamentos/${id}`, {
-      method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nombre })
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(data)
     });
     return handleResponse(response);
   },
@@ -91,19 +91,40 @@ export const liveApi = {
     await fetch(`${API_URL}/puestos/${id}`, { method: 'DELETE', headers: getHeaders() });
   },
 
+  // --- PAISES (live) ---
+  getPaises: async (): Promise<any[]> => {
+    const response = await fetch(`${API_URL}/paises`, { headers: getHeaders() });
+    return handleResponse(response);
+  },
+  createPais: async (data: any): Promise<any> => {
+    const response = await fetch(`${API_URL}/paises`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+  updatePais: async (id: number, data: any): Promise<any> => {
+    const response = await fetch(`${API_URL}/paises/${id}`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+  deletePais: async (id: number): Promise<void> => {
+    await fetch(`${API_URL}/paises/${id}`, { method: 'DELETE', headers: getHeaders() });
+  },
+
   getCiudades: async (): Promise<Ciudad[]> => {
     const response = await fetch(`${API_URL}/ciudades`, { headers: getHeaders() });
     return handleResponse(response);
   },
-  createCiudad: async (nombre: string): Promise<Ciudad> => {
+  createCiudad: async (data: any): Promise<Ciudad> => {
     const response = await fetch(`${API_URL}/ciudades`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre })
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(data)
     });
     return handleResponse(response);
   },
-  updateCiudad: async (id: number, nombre: string): Promise<Ciudad> => {
+  updateCiudad: async (id: number, data: any): Promise<Ciudad> => {
     const response = await fetch(`${API_URL}/ciudades/${id}`, {
-      method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nombre })
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify(data)
     });
     return handleResponse(response);
   },
@@ -196,12 +217,41 @@ export const liveApi = {
     });
     return handleResponse(response);
   },
-  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string): Promise<Equipo> => {
-    const response = await fetch(`${API_URL}/equipos/${equipoId}/finalizar-mantenimiento`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ ...data, nuevo_estado: nuevoEstado })
+  finalizarMantenimiento: async (equipoId: number, data: any, nuevoEstado: string, archivo?: File): Promise<any> => {
+  const url = `${API_URL}/equipos/${equipoId}/finalizar-mantenimiento`;
+  const token = localStorage.getItem('auth_token');
+
+  // Si hay archivo, enviar multipart/form-data (dejar que el navegador ponga Content-Type con boundary)
+  if (archivo) {
+    const fd = new FormData();
+    if (data.tipo !== undefined) fd.append('tipo', data.tipo);
+    if (data.proveedor !== undefined) fd.append('proveedor', data.proveedor);
+    if (data.costo !== undefined) fd.append('costo', String(data.costo));
+    if (data.descripcion !== undefined) fd.append('descripcion', data.descripcion);
+    if (data.ubicacionId !== undefined) fd.append('ubicacion_id', String(data.ubicacionId));
+    if (data.ubicacionNombre !== undefined) fd.append('ubicacion_nombre', String(data.ubicacionNombre));
+    if (data.serie_cargador !== undefined) fd.append('serie_cargador', String(data.serie_cargador));
+    fd.append('nuevo_estado', nuevoEstado);
+    fd.append('archivo_orden', archivo, (archivo as File).name);
+
+    const headers: Record<string,string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: fd
     });
     return handleResponse(response);
-  },
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ ...data, nuevo_estado: nuevoEstado })
+  });
+  return handleResponse(response);
+},
   marcarParaBaja: async (id: number, observaciones: string, ubicacionId: number, ubicacionNombre: string): Promise<Equipo> => {
     const response = await fetch(`${API_URL}/equipos/${id}/pre-baja`, {
       method: 'POST', headers: getHeaders(), body: JSON.stringify({ observaciones, ubicacion_id: ubicacionId, ubicacion_nombre: ubicacionNombre })
@@ -299,6 +349,44 @@ agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento
   },
   getNotifications: async (): Promise<Notificacion[]> => {
     const response = await fetch(`${API_URL}/notificaciones`, { headers: getHeaders() });
+    return handleResponse(response);
+  }
+  ,
+  // --- Bulk migrations ---
+  bulkCreateEquipos: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/equipos`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
+    return handleResponse(response);
+  },
+  bulkCreateUsuarios: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/usuarios`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
+    return handleResponse(response);
+  },
+  bulkCreateLicencias: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/licencias`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
+    return handleResponse(response);
+  },
+  bulkCreateDepartamentos: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/departamentos`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
+    return handleResponse(response);
+  },
+  bulkCreatePuestos: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/puestos`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
+    return handleResponse(response);
+  },
+  bulkCreateAsignaciones: async (rows: any[]): Promise<any> => {
+    const response = await fetch(`${API_URL}/migrations/asignaciones`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify(rows)
+    });
     return handleResponse(response);
   }
 };
