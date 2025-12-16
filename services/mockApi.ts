@@ -1,11 +1,10 @@
 
 import { Equipo, EstadoEquipo, RolUsuario, Usuario, ReporteGarantia, Notificacion, TipoEquipo, HistorialMovimiento, Departamento, Puesto, HistorialAsignacion, RegistroMantenimiento, TipoLicencia, Licencia, Ciudad, PlanMantenimiento, DetallePlan, EvidenciaMantenimiento, EstadoPlan, FrecuenciaMantenimiento, EmailConfig, Pais } from '../types';
 import { liveApi } from './liveApi';
-import Swal from 'sweetalert2';
 
 // --- CONFIGURACIÓN DEL BACKEND ---
 // Cambia esto a TRUE cuando tengas tu backend Laravel corriendo en localhost:8000
-const USE_LIVE_API = false; 
+const USE_LIVE_API = true; 
 // ---------------------------------
 
 // --- Mock Data Initialization ---
@@ -1191,3 +1190,7 @@ export const api = {
     }
   }
 };
+
+if (USE_LIVE_API) {
+    Object.assign(api, liveApi);
+}

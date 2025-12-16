@@ -27,6 +27,8 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
   // Filters
   const [filterUserId, setFilterUserId] = useState<string>('');
   const [fileToView, setFileToView] = useState<string | null>(null);
+    const [fileToViewUrl, setFileToViewUrl] = useState<string | null>(null);
+    const [fileToViewType, setFileToViewType] = useState<string | null>(null);
 
   // Upload Logic
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +79,28 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
           }
       }
   };
+
+    const openFile = async (path?: string | null) => {
+        if (!path) return Swal.fire('Info', 'No hay archivo disponible', 'info');
+        try {
+            const backendOrigin = window.location.origin.includes(':3000') ? window.location.origin.replace(':3000', ':8000') : window.location.origin;
+            const normalized = path.startsWith('/') ? path : '/' + path;
+            const url = path.startsWith('http') ? path : backendOrigin + normalized;
+
+            // Public proxy route is served without auth; do not send Authorization header to avoid preflight
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Fetch failed ' + res.status);
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            // Revoke previous if exists
+            if (fileToViewUrl) URL.revokeObjectURL(fileToViewUrl);
+            setFileToViewType(blob.type || null);
+            setFileToViewUrl(objUrl);
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudo abrir el archivo', 'error');
+        }
+    };
 
   // Procesar datos agrupados por usuario
   const userAssetsList: UserAssets[] = usuarios.map(user => {
@@ -327,10 +351,12 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
                                                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400 truncate max-w-[150px]" title={eq.equipo_modelo}>{eq.equipo_modelo}</td>
                                                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{eq.fecha_inicio}</td>
                                                 <td className="px-4 py-3 text-center">
-                                                    {eq.archivo_pdf ? (
-                                                        <button onClick={() => setFileToView(eq.archivo_pdf!)} className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1 rounded" title="Ver Documento">
-                                                            <Eye className="w-4 h-4"/>
-                                                        </button>
+                                                    { (eq as any).archivo || (eq as any).archivo_pdf ? (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button onClick={() => openFile((eq as any).archivo ?? (eq as any).archivo_pdf)} className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1 rounded" title="Ver Documento">
+                                                                <Eye className="w-4 h-4"/>
+                                                            </button>
+                                                        </div>
                                                     ) : (
                                                         <button onClick={() => handleUploadClick(eq.id)} className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700" title="Subir Documento Firmado">
                                                             <Upload className="w-4 h-4"/>
@@ -386,12 +412,21 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({ usuarios }) => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf,image/*" onChange={handleFileChange} />
 
-      <Modal isOpen={!!fileToView} onClose={() => setFileToView(null)} title="Vista Previa de Documento">
-         <div className="p-8 text-center bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-             <div className="mb-4 text-slate-400">Simulación de Visor PDF</div>
-             <div className="font-mono text-sm bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-600 rounded inline-block text-slate-600 dark:text-slate-300">{fileToView}</div>
-         </div>
-      </Modal>
+            <Modal isOpen={!!fileToViewUrl} onClose={() => { if (fileToViewUrl) URL.revokeObjectURL(fileToViewUrl); setFileToViewUrl(null); setFileToViewType(null); }} title="Vista Previa de Documento">
+                 <div className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                         {!fileToViewUrl ? (
+                             <div className="p-8 text-center text-slate-500">Cargando...</div>
+                         ) : (
+                             <div className="w-full h-[70vh]">
+                                 {fileToViewType && fileToViewType.startsWith('image/') ? (
+                                     <img src={fileToViewUrl} alt="Archivo" className="max-w-full max-h-full mx-auto" />
+                                 ) : (
+                                     <iframe src={fileToViewUrl} title="Documento" className="w-full h-full border-0" />
+                                 )}
+                             </div>
+                         )}
+                 </div>
+            </Modal>
     </div>
   );
 };
