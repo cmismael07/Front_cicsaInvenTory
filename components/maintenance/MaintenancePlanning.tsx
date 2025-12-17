@@ -13,9 +13,28 @@ const MaintenancePlanning: React.FC = () => {
   const [planDetails, setPlanDetails] = useState<DetallePlan[]>([]);
   const [isNewPlan, setIsNewPlan] = useState(false);
 
-  const handleGeneratePlan = async (year: number, cityId: number, cityName: string) => {
+  const handleGeneratePlan = async (year: number, cityId: number, cityName: string, detalles?: DetallePlan[]) => {
     try {
-        // 1. Fetch data
+        // If details were provided by the PlanningConfig (backend proposal), use them directly
+        if (detalles && detalles.length > 0) {
+            const header: PlanMantenimiento = {
+                id: Date.now(),
+                anio: year,
+                nombre: `Plan ${cityName} ${year}`,
+                creado_por: '',
+                fecha_creacion: new Date().toISOString(),
+                estado: 'ACTIVO',
+                ciudad_id: cityId,
+                ciudad_nombre: cityName
+            };
+            setCurrentPlan(header);
+            setPlanDetails(detalles);
+            setIsNewPlan(true);
+            setView('CALENDAR');
+            return;
+        }
+
+        // Fallback: previous local-generation behavior (keeps offline/mock flow)
         const [allEquipos, departamentos] = await Promise.all([
           api.getEquipos(),
           api.getDepartamentos()

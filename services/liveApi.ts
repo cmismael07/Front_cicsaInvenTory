@@ -352,6 +352,73 @@ agregarStockLicencias: async (tipoId: number, cantidad: number, fechaVencimiento
     return handleResponse(response);
   }
   ,
+  // --- Maintenance Planning ---
+  getMaintenancePlans: async (): Promise<any[]> => {
+    const response = await fetch(`${API_URL}/planes-mantenimiento`, { headers: getHeaders() });
+    return handleResponse(response);
+  },
+  getPlanDetails: async (planId: number): Promise<any> => {
+    const response = await fetch(`${API_URL}/planes-mantenimiento/${planId}`, { headers: getHeaders() });
+    return handleResponse(response);
+  },
+  
+  generateProposal: async (payload: { ciudad_id: number, mes?: number }) => {
+    const response = await fetch(`${API_URL}/planes-mantenimiento/propuesta`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(response);
+  },
+  
+  // Create a new maintenance plan
+  createMaintenancePlan: async (plan: any, details: any[]) : Promise<any> => {
+    const response = await fetch(`${API_URL}/planes-mantenimiento`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ ...plan, details })
+    });
+    return handleResponse(response);
+  },
+
+  // Update detail month
+  updatePlanDetailMonth: async (detailId: number, month: number): Promise<any> => {
+    const response = await fetch(`${API_URL}/detalles-planes-mantenimiento/${detailId}/mes`, {
+      method: 'PUT', headers: getHeaders(), body: JSON.stringify({ month })
+    });
+    return handleResponse(response);
+  },
+
+  // Start maintenance from plan detail
+  iniciarMantenimientoDesdePlan: async (detailId: number, motivo: string): Promise<any> => {
+    const response = await fetch(`${API_URL}/detalles-planes-mantenimiento/${detailId}/iniciar`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ motivo })
+    });
+    return handleResponse(response);
+  },
+
+  // Register execution for a detail
+  registerMaintenanceExecution: async (detailId: number, data: any): Promise<any> => {
+    const url = `${API_URL}/ejecuciones-mantenimiento/${detailId}`;
+    // handle multipart if archivo is present
+    if (data && data.archivo) {
+      const fd = new FormData();
+      if (data.fecha) fd.append('fecha', data.fecha);
+      if (data.tecnico) fd.append('tecnico', data.tecnico);
+      if (data.observaciones) fd.append('observaciones', data.observaciones || '');
+      fd.append('archivo', data.archivo);
+      const headers: any = {};
+      if (localStorage.getItem('auth_token')) headers['Authorization'] = `Bearer ${localStorage.getItem('auth_token')}`;
+      const response = await fetch(url, { method: 'POST', headers, body: fd });
+      return handleResponse(response);
+    }
+    const response = await fetch(url, { method: 'POST', headers: getHeaders(), body: JSON.stringify(data) });
+    return handleResponse(response);
+  },
+
+  // Get executions for a detail
+  getExecutions: async (detailId: number): Promise<any[]> => {
+    const response = await fetch(`${API_URL}/ejecuciones-mantenimiento/${detailId}`, { headers: getHeaders() });
+    return handleResponse(response);
+  },
   // --- Bulk migrations ---
   bulkCreateEquipos: async (rows: any[]): Promise<any> => {
     const response = await fetch(`${API_URL}/migrations/equipos`, {
