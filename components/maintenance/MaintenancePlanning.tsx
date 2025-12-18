@@ -20,7 +20,7 @@ const MaintenancePlanning: React.FC = () => {
             const header: PlanMantenimiento = {
                 id: Date.now(),
                 anio: year,
-                nombre: `Plan ${cityName} ${year}`,
+                nombre: `Plan Maestro ${year} - ${cityName}`,
                 creado_por: '',
                 fecha_creacion: new Date().toISOString(),
                 estado: 'ACTIVO',
