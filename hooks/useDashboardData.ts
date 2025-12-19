@@ -1,8 +1,8 @@
 
 
 import { useState, useEffect } from 'react';
-import { api } from '../services/mockApi';
-import { EstadoEquipo, ReporteGarantia, DetallePlan } from '../types';
+import { EstadoEquipo, ReporteGarantia, DetallePlan, EstadoPlan } from '../types';
+import { liveApi } from '../services/liveApi';
 
 export interface LicenseSummary {
   name: string;
@@ -48,15 +48,52 @@ export const useDashboardData = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [warranties, licencias, equiposData, maintenancePending] = await Promise.all([
-          api.getWarrantyReport(),
-          api.getLicencias(),
-          api.getEquipos(),
-          api.getPendingMaintenanceCurrentMonth()
+        const [warranties, licencias, equiposData] = await Promise.all([
+          liveApi.getWarrantyReport(),
+          liveApi.getLicencias(),
+          liveApi.getEquipos()
         ]);
-        
+
         setWarrantyData(warranties);
-        setPendingMaintenance(maintenancePending);
+
+        // --- Pending maintenance: fetch plans and their details, then filter by current month and current year ---
+        const monthNum = new Date().getMonth() + 1; // 1-12
+        const currentYear = new Date().getFullYear();
+        let pending: DetallePlan[] = [];
+        try {
+          const rawPlans = await liveApi.getMaintenancePlans();
+          const plansArray = Array.isArray(rawPlans) ? rawPlans : (rawPlans.data ?? (rawPlans.plans ?? (rawPlans.plan ? [rawPlans.plan] : [])));
+
+          // Only consider plans for the current year
+          const plansThisYear = plansArray.filter((p: any) => {
+            const planYear = Number(p.anio ?? p.year ?? p.anio_plan ?? p.year_plan ?? currentYear);
+            return planYear === currentYear;
+          });
+
+          // Fetch details for each plan (sequential to avoid flooding; could be parallel)
+          for (const p of plansThisYear) {
+            try {
+              const rawDetails = await liveApi.getPlanDetails(p.id ?? p.plan_id ?? p.id_plan);
+              const details = rawDetails?.details ?? rawDetails?.detalles ?? rawDetails?.data?.details ?? rawDetails?.data?.detalles ?? rawDetails ?? [];
+              if (Array.isArray(details)) {
+                details.forEach((d: DetallePlan) => {
+                  const mes = Number(d.mes_programado || d.mes || 0);
+                  const estado = (d.estado || '').toString();
+                  if (mes === monthNum && (estado === EstadoPlan.PENDIENTE || estado === 'Pendiente' || estado === 'pendiente')) {
+                    pending.push(d);
+                  }
+                });
+              }
+            } catch (e) {
+              // ignore plan details failure for a single plan
+              console.warn('Failed loading plan details for plan', p, e);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed loading maintenance plans', e);
+        }
+
+        setPendingMaintenance(pending);
         
         // --- 1. Calcular Agrupaciones por Tipo para las Tarjetas (Excluyendo BAJA) ---
         const gStats: TypeGroupStats = {

@@ -27,9 +27,9 @@ export const MaintenanceReportTab: React.FC = () => {
       if (!filterText) return true;
       const searchLower = filterText.toLowerCase();
       return (
-          reg.equipo_codigo.toLowerCase().includes(searchLower) ||
-          reg.equipo_modelo.toLowerCase().includes(searchLower) ||
-          reg.proveedor.toLowerCase().includes(searchLower)
+        (reg.equipo_codigo ?? '').toLowerCase().includes(searchLower) ||
+    (reg.equipo_modelo ?? '').toLowerCase().includes(searchLower) ||
+    (reg.proveedor ?? '').toLowerCase().includes(searchLower)
       );
   });
 
